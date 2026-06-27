@@ -1,0 +1,43 @@
+{
+  "name": "open-expense",
+  "version": "1.2.1",
+  "description": "A small, composable expense tracking PWA — upload receipts, OCR them with Gemini, build reports, export to PDF.",
+  "type": "commonjs",
+  "main": "src/server.js",
+  "bin": {
+    "ocr-receipt": "bin/ocr-receipt.js",
+    "make-report-pdf": "bin/make-report-pdf.js",
+    "create-user": "bin/create-user.js",
+    "generate-icons": "bin/generate-icons.js"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node src/server.js",
+    "ocr": "node bin/ocr-receipt.js",
+    "pdf": "node bin/make-report-pdf.js",
+    "create-user": "node bin/create-user.js",
+    "icons": "node bin/generate-icons.js"
+  },
+  "keywords": [
+    "expense",
+    "receipt",
+    "ocr",
+    "gemini",
+    "pwa",
+    "pdf"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "bcrypt": "^5.1.1",
+    "better-sqlite3": "^11.8.1",
+    "dotenv": "^16.4.7",
+    "ejs": "^3.1.10",
+    "express": "^4.21.2",
+    "express-session": "^1.18.1",
+    "multer": "^2.2.0",
+    "nodemailer": "^6.10.1",
+    "pdfkit": "^0.15.0",
+    "sharp": "^0.33.5"
+  }
+}

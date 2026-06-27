@@ -1,0 +1,37 @@
+<%- include('../_top', {title: 'Categories · Admin'}) %>
+  <div class="page-head">
+    <h1>Categories</h1>
+    <div class="page-actions"><a class="btn btn-ghost" href="/admin">← Admin</a></div>
+  </div>
+
+  <div class="grid grid-2">
+    <div class="card">
+      <h2 class="mt-0">Add category</h2>
+      <form method="post" action="/admin/categories" class="row">
+        <input name="name" type="text" placeholder="Category name" required />
+        <button class="btn btn-primary" type="submit">Add</button>
+      </form>
+    </div>
+
+    <div class="card flush">
+      <div style="padding:16px 18px 4px;"><h2 class="mt-0">Existing (<%= categories.length %>)</h2></div>
+      <table>
+        <tbody>
+        <% categories.forEach(c => { %>
+          <% var used = inUse[(c.name || '').toLowerCase()] || 0; %>
+          <tr>
+            <td><%= c.name %></td>
+            <td class="muted"><%= used %> <%= used === 1 ? 'expense' : 'expenses' %></td>
+            <td class="num">
+              <form method="post" action="/admin/categories/<%= c.id %>/delete" class="inline">
+                <button class="btn btn-ghost btn-sm" type="submit"
+                        onclick="return confirm('Delete this category? Existing expenses keep their value.');">✕</button>
+              </form>
+            </td>
+          </tr>
+        <% }); %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+<%- include('../_bottom') %>

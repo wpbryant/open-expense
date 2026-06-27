@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title><%= typeof title !== 'undefined' ? title + ' · ' : '' %><%= appName %></title>
+  <meta name="theme-color" content="#2563eb" />
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="icon" href="/icons/favicon-32.png?v=<%= assetVersion %>" type="image/png" />
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png?v=<%= assetVersion %>" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="OpenExpense" />
+  <link rel="stylesheet" href="/css/app.css?v=<%= assetVersion %>" />
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/">
+      <img src="/icons/icon-192.png?v=<%= assetVersion %>" alt="" width="28" height="28" />
+      <span><%= appName %></span>
+    </a>
+    <% if (currentUser) { %>
+    <button class="nav-toggle" id="navToggle" type="button" aria-label="Open menu" aria-expanded="false">
+      <span class="nav-toggle-bar"></span>
+      <span class="nav-toggle-bar"></span>
+      <span class="nav-toggle-bar"></span>
+    </button>
+    <div class="topbar-right" id="navDrawer">
+      <nav class="nav">
+        <a href="/" class="<%= path === '/' ? 'active' : '' %>">Dashboard</a>
+        <a href="/expenses" class="<%= path.indexOf('/expenses') === 0 ? 'active' : '' %>">Expenses</a>
+        <a href="/reports" class="<%= path.indexOf('/reports') === 0 ? 'active' : '' %>">Reports</a>
+        <a href="/receipts/scan" class="<%= path.indexOf('/receipts') === 0 ? 'active' : '' %>">Scan</a>
+        <% if (currentUser.is_admin) { %>
+        <a href="/admin" class="<%= path.indexOf('/admin') === 0 ? 'active' : '' %>">Admin</a>
+        <% } %>
+      </nav>
+      <div class="userbox">
+        <span class="user"><%= currentUser.username %><% if (currentUser.is_admin) { %><em>admin</em><% } %></span>
+        <form method="post" action="/logout" class="inline">
+          <button class="btn btn-ghost btn-sm" type="submit">Log out</button>
+        </form>
+      </div>
+    </div>
+    <div class="nav-backdrop" id="navBackdrop" hidden></div>
+    <% } %>
+  </header>
+
+  <%- include('_messages') %>
+
+  <main class="container">

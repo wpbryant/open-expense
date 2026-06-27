@@ -1,0 +1,37 @@
+<%- include('../_top', {title: title}) %>
+  <div class="page-head">
+    <h1><%= title %></h1>
+    <div class="page-actions"><a class="btn btn-ghost" href="/reports">← Back to reports</a></div>
+  </div>
+
+  <div class="card">
+    <form method="post" action="<%= isNew ? '/reports' : '/reports/' + report.id %>">
+      <div class="field">
+        <label for="name">Report name *</label>
+        <input id="name" name="name" type="text" value="<%= report.name %>"
+               placeholder="e.g. June 2026 — Client Trip" required autofocus />
+      </div>
+      <div class="field">
+        <label for="purpose">Business purpose</label>
+        <input id="purpose" name="purpose" type="text" value="<%= report.purpose %>"
+               placeholder="Why these expenses were incurred" />
+      </div>
+      <div class="field">
+        <label for="description">Description / notes</label>
+        <textarea id="description" name="description" rows="2"><%= report.description %></textarea>
+      </div>
+      <div class="field">
+        <label for="status">Status</label>
+        <select id="status" name="status">
+          <% statuses.forEach(s => { %>
+            <option value="<%= s %>" <%= report.status === s ? 'selected' : '' %>><%= s %></option>
+          <% }); %>
+        </select>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" type="submit"><%= isNew ? 'Create report' : 'Save report' %></button>
+        <a class="btn btn-ghost" href="/reports">Cancel</a>
+      </div>
+    </form>
+  </div>
+<%- include('../_bottom') %>

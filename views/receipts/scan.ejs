@@ -1,0 +1,39 @@
+<%- include('../_top', {title: 'Scan receipt'}) %>
+  <div class="page-head">
+    <h1>Scan a receipt</h1>
+    <div class="page-actions"><a class="btn btn-ghost" href="/expenses">← Back</a></div>
+  </div>
+
+  <% if (error) { %><div class="flash flash-error"><%= error %></div><% } %>
+
+  <div class="card">
+    <% if (ocrEnabled) { %>
+      <p class="hint-text">Upload a photo, screenshot, or PDF of a receipt. We'll read it with Gemini and pre-fill the expense fields for you to review.</p>
+    <% } else { %>
+      <div class="flash flash-error" style="margin-top:0;">
+        OCR is disabled — <code>GEMINI_API_KEY</code> is not set. You can still attach a receipt image to an expense, but fields won't be auto-filled.
+        Set the key in <code>.env</code> to enable scanning.
+      </div>
+    <% } %>
+
+    <form method="post" action="/receipts/scan" enctype="multipart/form-data" id="scan-form">
+      <% if (presetReport) { %>
+        <input type="hidden" name="report_id" value="<%= presetReport %>" />
+        <div class="flash flash-info" style="margin-top:0;">This expense will be attached to <strong>report #<%= presetReport %></strong> when you save it.</div>
+      <% } %>
+      <div class="field">
+        <label for="receipt-input">Receipt image or PDF</label>
+        <input id="receipt-input" name="receipt" type="file" accept="image/*,application/pdf" capture="environment" required />
+        <p class="hint-text" id="file-name">JPG, PNG, HEIC, WEBP, or PDF — up to 15 MB.</p>
+        <img id="receipt-preview" class="receipt-preview" src="" alt="" style="display:none; margin-top:10px;" />
+      </div>
+      <button class="btn btn-primary" type="submit" id="scan-submit">
+        <%= ocrEnabled ? '📷 Upload & read receipt' : '📎 Attach receipt' %>
+      </button>
+      <div id="scan-status" class="scan-status" hidden>
+        <span class="spinner" aria-hidden="true"></span>
+        <span class="scan-status-text">AI is reading your receipt — this can take a few seconds. Please don't close or refresh this page.</span>
+      </div>
+    </form>
+  </div>
+<%- include('../_bottom') %>

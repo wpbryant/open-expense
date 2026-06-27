@@ -1,0 +1,9 @@
+<% if (typeof messages !== 'undefined' && messages) { %>
+  <% for (const type of ['success','error','info']) { %>
+    <% if (messages[type] && messages[type].length) { %>
+      <% for (const msg of messages[type]) { %>
+        <div class="flash flash-<%= type %>" role="status"><%= msg %></div>
+      <% } %>
+    <% } %>
+  <% } %>
+<% } %>

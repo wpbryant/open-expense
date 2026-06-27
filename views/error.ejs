@@ -1,0 +1,7 @@
+<%- include('_top', {title: 'Error'}) %>
+  <div class="card" style="text-align:center;">
+    <h1 style="margin-bottom:6px;">⚠️</h1>
+    <p style="color:var(--muted);"><%= message || 'Something went wrong.' %></p>
+    <p><a class="btn btn-primary" href="/">Back to dashboard</a></p>
+  </div>
+<%- include('_bottom') %>

@@ -1,0 +1,113 @@
+<%- include('../_top', {title: title}) %>
+  <div class="page-head">
+    <h1><%= title %></h1>
+    <div class="page-actions">
+      <a class="btn btn-ghost" href="/expenses">← Back to expenses</a>
+    </div>
+  </div>
+
+  <% if (typeof errors !== 'undefined' && errors && errors.length) { %>
+    <div class="form-errors">
+      <% errors.forEach(er => { %><div>• <%= er %></div><% }); %>
+    </div>
+  <% } %>
+
+  <% if (ocrError) { %>
+    <div class="flash flash-error">OCR failed: <%= ocrError %>. You can still fill the form manually — your receipt is attached.</div>
+  <% } %>
+
+  <div class="grid grid-2">
+    <% if (receiptPreview) { %>
+      <div class="card">
+        <h2 class="mt-0">Receipt <% if (receiptIsPdf) { %><span class="badge badge-ocr">PDF</span><% } %></h2>
+        <% if (ocrConfidence) { %>
+          <p class="hint-text">Scan confidence: <span class="badge badge-ocr"><%= ocrConfidence %></span> — please review the fields.</p>
+        <% } %>
+        <a href="<%= receiptDownload || receiptPreview %>" target="_blank">
+          <img class="receipt-preview" src="<%= receiptPreview %>" alt="receipt" style="width:100%;" />
+        </a>
+        <% if (receiptIsPdf) { %>
+          <p class="hint-text" style="margin-top:10px;">Showing first page. <a href="<%= receiptDownload %>" target="_blank">Open original PDF ↗</a></p>
+        <% } %>
+      </div>
+    <% } %>
+
+    <div class="card">
+      <form method="post" action="<%= isNew ? '/expenses' : '/expenses/' + expense.id %>">
+        <input type="hidden" name="receipt_path" value="<%= receiptPath || '' %>" />
+
+        <div class="field">
+          <label for="merchant">Merchant *</label>
+          <input id="merchant" name="merchant" type="text" value="<%= expense.merchant %>" required autofocus />
+        </div>
+
+        <div class="row-3">
+          <div class="field">
+            <label for="amount">Amount *</label>
+            <input id="amount" name="amount" type="number" step="0.01" min="0" value="<%= expense.amount %>" required />
+          </div>
+          <div class="field">
+            <label for="currency">Currency</label>
+            <select id="currency" name="currency">
+              <% ['USD','EUR','GBP','CAD','AUD','JPY','INR'].forEach(cur => { %>
+                <option <%= expense.currency === cur ? 'selected' : '' %>><%= cur %></option>
+              <% }); %>
+            </select>
+          </div>
+          <div class="field">
+            <label for="date">Date *</label>
+            <input id="date" name="date" type="date" value="<%= expense.date %>" required />
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="field">
+            <label for="category">Category</label>
+            <select id="category" name="category">
+              <option value="">— select —</option>
+              <% categories.forEach(c => { %>
+                <option <%= expense.category === c ? 'selected' : '' %>><%= c %></option>
+              <% }); %>
+            </select>
+          </div>
+          <div class="field">
+            <label for="payment_method">Payment method</label>
+            <input id="payment_method" name="payment_method" type="text" value="<%= expense.payment_method %>" placeholder="VISA, Cash…" />
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="description">Description</label>
+          <textarea id="description" name="description" rows="2" placeholder="What was this for?"><%= expense.description %></textarea>
+        </div>
+
+        <div class="field">
+          <label for="report_id">Attach to report</label>
+          <select id="report_id" name="report_id">
+            <option value="">— none (leave unfiled) —</option>
+            <% reports.forEach(r => { %>
+              <option value="<%= r.id %>" <%= String(expense.report_id) === String(r.id) ? 'selected' : '' %>>
+                <%= r.name %> (<%= money(r.total) %>)
+              </option>
+            <% }); %>
+          </select>
+        </div>
+
+        <div class="form-actions">
+          <button class="btn btn-primary" type="submit"><%= isNew ? 'Add expense' : 'Save changes' %></button>
+          <a class="btn btn-ghost" href="/expenses">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <% if (!isNew) { %>
+    <div class="card">
+      <h2 class="mt-0">Danger zone</h2>
+      <form method="post" action="/expenses/<%= expense.id %>/delete"
+            onsubmit="return confirm('Delete this expense? This cannot be undone.');">
+        <button class="btn btn-danger" type="submit">Delete expense</button>
+      </form>
+    </div>
+  <% } %>
+<%- include('../_bottom') %>

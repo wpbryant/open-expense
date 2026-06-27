@@ -1,0 +1,87 @@
+<%- include('../_top', {title: 'Expenses'}) %>
+  <div class="page-head">
+    <div>
+      <h1>Expenses</h1>
+      <div class="sub"><%= expenses.length %> shown · total <%= money(total) %></div>
+    </div>
+    <div class="page-actions">
+      <a class="btn" href="/receipts/scan">📷 Scan receipt</a>
+      <a class="btn btn-primary" href="/expenses/new">+ Add expense</a>
+    </div>
+  </div>
+
+  <div class="card">
+    <form method="get" action="/expenses" class="row-3">
+      <div class="field" style="margin:0;">
+        <label>Report</label>
+        <select name="report" onchange="this.form.submit()">
+          <option value="">All reports</option>
+          <option value="unfiled" <%= filters.report === 'unfiled' ? 'selected' : '' %>>Unfiled</option>
+          <% reports.forEach(r => { %>
+            <option value="<%= r.id %>" <%= String(filters.report) === String(r.id) ? 'selected' : '' %>><%= r.name %></option>
+          <% }); %>
+        </select>
+      </div>
+      <div class="field" style="margin:0;">
+        <label>Category</label>
+        <select name="category" onchange="this.form.submit()">
+          <option value="">All categories</option>
+          <% categories.forEach(c => { %>
+            <option <%= filters.category === c ? 'selected' : '' %>><%= c %></option>
+          <% }); %>
+        </select>
+      </div>
+      <div class="field" style="margin:0;">
+        <label>Search</label>
+        <input type="search" name="q" value="<%= filters.q %>" placeholder="merchant or description" />
+      </div>
+    </form>
+  </div>
+
+  <div class="card flush">
+    <% if (expenses.length) { %>
+      <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th></th>
+            <th>Date</th>
+            <th>Merchant</th>
+            <th>Category</th>
+            <th>Report</th>
+            <th class="num">Amount</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+        <% expenses.forEach(e => { %>
+          <tr>
+            <td>
+              <% if (e.receipt_path) { %>
+                <a href="<%= fileUrl(e.receipt_path) %>" target="_blank">
+                  <img class="receipt-thumb" src="<%= imgUrl(e.receipt_path) %>" alt="receipt" />
+                </a>
+              <% } %>
+            </td>
+            <td><%= e.date %></td>
+            <td><a href="/expenses/<%= e.id %>/edit"><%= e.merchant || '(none)' %></a>
+              <% if (e.description) { %><div class="muted" style="font-size:12px;"><%= e.description %></div><% } %>
+            </td>
+            <td><span class="badge"><%= e.category || 'Uncategorized' %></span></td>
+            <td class="muted"><%= e.report_name ? e.report_name : '—' %></td>
+            <td class="num"><%= money(e.amount, e.currency) %></td>
+            <td class="num">
+              <a class="btn btn-ghost btn-sm" href="/expenses/<%= e.id %>/edit">Edit</a>
+            </td>
+          </tr>
+        <% }); %>
+        </tbody>
+      </table>
+      </div>
+    <% } else { %>
+      <div class="empty">
+        No expenses found. <a href="/expenses/new">Add one manually</a> or <a href="/receipts/scan">scan a receipt</a>.
+      </div>
+    <% } %>
+  </div>
+<%- include('../_bottom') %>

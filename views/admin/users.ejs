@@ -1,0 +1,119 @@
+<%- include('../_top', {title: 'Users · Admin'}) %>
+  <div class="page-head">
+    <h1>Users</h1>
+    <div class="page-actions"><a class="btn btn-ghost" href="/admin">← Admin</a></div>
+  </div>
+
+  <% if (!mailConfigured) { %>
+    <div class="flash flash-info">
+      SMTP isn’t configured, so password-reset links can’t be emailed. They’ll be shown here for you to copy and send manually.
+      Set <code>SMTP_HOST</code> (and <code>SMTP_USER</code>/<code>SMTP_PASS</code>/<code>SMTP_FROM</code>) in <code>.env</code> to email them.
+    </div>
+  <% } %>
+
+  <div class="grid grid-2">
+    <div class="card">
+      <h2 class="mt-0">Create user</h2>
+      <form method="post" action="/admin/users">
+        <div class="row">
+          <div class="field">
+            <label for="first_name">First name</label>
+            <input id="first_name" name="first_name" type="text" />
+          </div>
+          <div class="field">
+            <label for="last_name">Last name</label>
+            <input id="last_name" name="last_name" type="text" />
+          </div>
+        </div>
+        <div class="field">
+          <label for="email">Email</label>
+          <input id="email" name="email" type="email" placeholder="used for password-reset links" />
+        </div>
+        <div class="row">
+          <div class="field">
+            <label for="username">Username *</label>
+            <input id="username" name="username" type="text" required />
+          </div>
+          <div class="field">
+            <label for="password">Password *</label>
+            <input id="password" name="password" type="password" required />
+          </div>
+        </div>
+        <div class="field">
+          <label style="font-weight:400;">
+            <input type="checkbox" name="is_admin" style="width:auto;" /> Administrator
+          </label>
+        </div>
+        <button class="btn btn-primary" type="submit">Create user</button>
+      </form>
+    </div>
+
+    <div class="card flush">
+      <div style="padding:16px 18px 4px;"><h2 class="mt-0">All users (<%= users.length %>)</h2></div>
+      <table>
+        <thead><tr><th>Name</th><th>Username</th><th>Email</th><th>Role</th></tr></thead>
+        <tbody>
+        <% users.forEach(u => { %>
+          <tr>
+            <td><strong><%= [u.first_name, u.last_name].filter(Boolean).join(' ') || u.username %></strong></td>
+            <td><%= u.username %></td>
+            <td class="muted"><%= u.email || '—' %></td>
+            <td><%- u.is_admin ? '<span class="badge badge-ocr">admin</span>' : '<span class="badge">user</span>' %></td>
+          </tr>
+        <% }); %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 class="mt-0">Manage accounts</h2>
+    <p class="hint-text">Edit profile, reset a password, send a reset link, or toggle admin. Leave password blank to keep the current one.</p>
+    <% users.forEach(u => { %>
+      <div class="card" style="margin-bottom:10px; box-shadow:none; background:#fafbfc;">
+        <div class="flex-between" style="margin-bottom:10px;">
+          <strong><%= u.username %></strong>
+          <% if (u.is_admin) { %><span class="badge badge-ocr">admin</span><% } %>
+        </div>
+        <form method="post" action="/admin/users/<%= u.id %>">
+          <div class="row">
+            <div class="field">
+              <label>First name</label>
+              <input name="first_name" type="text" value="<%= u.first_name %>" />
+            </div>
+            <div class="field">
+              <label>Last name</label>
+              <input name="last_name" type="text" value="<%= u.last_name %>" />
+            </div>
+          </div>
+          <div class="field">
+            <label>Email</label>
+            <input name="email" type="email" value="<%= u.email %>" />
+          </div>
+          <div class="row-3">
+            <input name="password" type="password" placeholder="new password (optional)" autocomplete="new-password" />
+            <label style="font-weight:400; align-self:center;">
+              <input type="checkbox" name="is_admin" <%= u.is_admin ? 'checked' : '' %> style="width:auto;" /> Admin
+            </label>
+            <div style="text-align:right;">
+              <button class="btn btn-sm" type="submit">Update</button>
+              <a class="btn btn-sm" href="#u-<%= u.id %>-reset">Send reset</a>
+            </div>
+          </div>
+        </form>
+        <form id="u-<%= u.id %>-reset" method="post" action="/admin/users/<%= u.id %>/send-reset"
+              onsubmit="return confirm('Send a password-reset link to <%= u.email || u.username %>?');"
+              style="margin-top:8px;">
+          <button class="btn btn-sm" type="submit">✉ Send password-reset link<%= u.email ? ' to ' + u.email : ' (no email — link will be shown)' %></button>
+        </form>
+        <form method="post" action="/admin/users/<%= u.id %>/delete" style="margin-top:8px;">
+          <button class="btn btn-danger btn-sm" type="submit"
+                  onclick="return confirm('Delete user <%= u.username %>? Their expenses will be removed.');"
+                  <% if (u.id === currentUser.id) { %>disabled title="You cannot delete yourself"<% } %>>
+            Delete user
+          </button>
+        </form>
+      </div>
+    <% }); %>
+  </div>
+<%- include('../_bottom') %>

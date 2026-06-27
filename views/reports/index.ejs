@@ -1,0 +1,48 @@
+<%- include('../_top', {title: 'Reports'}) %>
+  <div class="page-head">
+    <div>
+      <h1>Expense reports</h1>
+      <div class="sub">Group expenses into reports you can submit and export to PDF.</div>
+    </div>
+    <div class="page-actions"><a class="btn btn-primary" href="/reports/new">+ New report</a></div>
+  </div>
+
+  <div class="card flush">
+    <% if (reports.length) { %>
+      <table class="responsive-table">
+        <thead>
+          <tr>
+            <th>Report</th>
+            <th>Status</th>
+            <th class="num">Expenses</th>
+            <th class="num">Total</th>
+            <th>Updated</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+        <% reports.forEach(r => { %>
+          <tr>
+            <td data-label="Report">
+              <a href="/reports/<%= r.id %>"><strong><%= r.name %></strong></a>
+              <% if (r.description) { %><div class="muted" style="font-size:12px;"><%= r.description %></div><% } %>
+            </td>
+            <td data-label="Status"><span class="badge badge-<%= r.status %>"><%= r.status %></span></td>
+            <td class="num" data-label="Expenses"><%= r.expense_count %></td>
+            <td class="num" data-label="Total"><%= money(r.total) %></td>
+            <td class="muted" data-label="Updated"><%= (r.updated_at || '').slice(0,10) %></td>
+            <td class="num" data-label="">
+              <a class="btn btn-ghost btn-sm" href="/reports/<%= r.id %>">Open</a>
+              <% if (r.expense_count > 0) { %>
+                <a class="btn btn-sm" href="/reports/<%= r.id %>/pdf">⬇ PDF</a>
+              <% } %>
+            </td>
+          </tr>
+        <% }); %>
+        </tbody>
+      </table>
+    <% } else { %>
+      <div class="empty">No reports yet. <a href="/reports/new">Create one</a>.</div>
+    <% } %>
+  </div>
+<%- include('../_bottom') %>

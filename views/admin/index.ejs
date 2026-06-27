@@ -1,0 +1,37 @@
+<%- include('../_top', {title: 'Admin'}) %>
+  <div class="page-head">
+    <div>
+      <h1>Admin panel</h1>
+      <div class="sub">Global overview and management.</div>
+    </div>
+    <div class="page-actions">
+      <a class="btn" href="/admin/users">Users</a>
+      <a class="btn" href="/admin/categories">Categories</a>
+    </div>
+  </div>
+
+  <div class="grid grid-3" style="margin-bottom:16px;">
+    <div class="card stat"><div class="label">Users</div><div class="value"><%= stats.users %></div></div>
+    <div class="card stat"><div class="label">Expenses</div><div class="value"><%= stats.expenses.count %></div></div>
+    <div class="card stat"><div class="label">Total tracked</div><div class="value"><%= money(stats.expenses.total) %></div></div>
+  </div>
+
+  <div class="card flush">
+    <div style="padding:18px 18px 6px;"><h2 class="mt-0">Spending by user</h2></div>
+    <% if (stats.byUser.length) { %>
+      <table>
+        <thead><tr><th>User</th><th>Role</th><th class="num">Expenses</th><th class="num">Total</th></tr></thead>
+        <tbody>
+        <% stats.byUser.forEach(u => { %>
+          <tr>
+            <td><%= u.username %></td>
+            <td><%- u.is_admin ? '<span class="badge badge-ocr">admin</span>' : '<span class="badge">user</span>' %></td>
+            <td class="num"><%= u.expense_count %></td>
+            <td class="num"><%= money(u.total) %></td>
+          </tr>
+        <% }); %>
+        </tbody>
+      </table>
+    <% } else { %><div class="empty">No users.</div><% } %>
+  </div>
+<%- include('../_bottom') %>

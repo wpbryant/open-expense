@@ -1,0 +1,77 @@
+<%- include('_top', {title: 'Dashboard'}) %>
+  <div class="page-head">
+    <div>
+      <h1>Hello, <%= currentUser.username %></h1>
+      <div class="sub">Here's your spending at a glance.</div>
+    </div>
+    <div class="page-actions">
+      <a class="btn" href="/receipts/scan">📷 Scan receipt</a>
+      <a class="btn btn-primary" href="/expenses/new">+ Add expense</a>
+    </div>
+  </div>
+
+  <div class="grid grid-4" style="margin-bottom:16px;">
+    <div class="card stat">
+      <div class="label">Unsubmitted expenses</div>
+      <div class="value"><%= money(stats.unsubmitted.total) %></div>
+      <div class="hint"><%= stats.unsubmitted.count %> <%= stats.unsubmitted.count === 1 ? 'entry' : 'entries' %> not yet submitted</div>
+    </div>
+    <div class="card stat">
+      <div class="label">Unfiled</div>
+      <div class="value"><%= money(stats.unreported.total) %></div>
+      <div class="hint"><%= stats.unreported.count %> <%= stats.unreported.count === 1 ? 'expense' : 'expenses' %> not in a report</div>
+    </div>
+    <div class="card stat">
+      <div class="label">Reports</div>
+      <div class="value"><%= stats.reports.length %></div>
+      <div class="hint"><a href="/reports">view all →</a></div>
+    </div>
+    <div class="card stat">
+      <div class="label">Top category</div>
+      <div class="value" style="font-size:18px;"><%= stats.byCategory[0] ? stats.byCategory[0].category : '—' %></div>
+      <div class="hint"><%= stats.byCategory[0] ? money(stats.byCategory[0].total) : '' %></div>
+    </div>
+  </div>
+
+  <div class="grid grid-2">
+    <div class="card flush">
+      <div style="padding:18px 18px 6px;"><h2 class="mt-0">Recent expenses</h2></div>
+      <% if (stats.recent.length) { %>
+        <table>
+          <tbody>
+          <% stats.recent.forEach(e => { %>
+            <tr>
+              <td>
+                <div><a href="/expenses/<%= e.id %>/edit"><%= e.merchant || '(no merchant)' %></a></div>
+                <div class="muted" style="font-size:12px;"><%= e.date %> · <%= e.category || 'Uncategorized' %></div>
+              </td>
+              <td class="num"><%= money(e.amount, e.currency) %></td>
+            </tr>
+          <% }); %>
+          </tbody>
+        </table>
+      <% } else { %>
+        <div class="empty">No expenses yet. <a href="/expenses/new">Add one</a> or <a href="/receipts/scan">scan a receipt</a>.</div>
+      <% } %>
+    </div>
+
+    <div class="card flush">
+      <div style="padding:18px 18px 6px;"><h2 class="mt-0">By category</h2></div>
+      <% if (stats.byCategory.length) { %>
+        <table>
+          <tbody>
+          <% stats.byCategory.forEach(c => { %>
+            <tr>
+              <td><%= c.category %></td>
+              <td class="muted" style="font-size:12px;"><%= c.count %></td>
+              <td class="num"><%= money(c.total) %></td>
+            </tr>
+          <% }); %>
+          </tbody>
+        </table>
+      <% } else { %>
+        <div class="empty">Nothing to break down yet.</div>
+      <% } %>
+    </div>
+  </div>
+<%- include('_bottom') %>

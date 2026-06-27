@@ -1,0 +1,126 @@
+<% var dates = expenses.map(e => e.date).filter(Boolean).sort();
+   var period = dates.length ? (dates.length === 1 ? dates[0] : dates[0] + ' → ' + dates[dates.length-1]) : '—'; %>
+<%- include('../_top', {title: report.name}) %>
+  <div class="page-head">
+    <div>
+      <h1><%= report.name %></h1>
+      <div class="sub">
+        <span class="badge badge-<%= report.status %>"><%= report.status %></span>
+        <%= report.expense_count %> <%= report.expense_count === 1 ? 'expense' : 'expenses' %>
+        · <%= money(report.total) %>
+        <% if (dates.length) { %> · <%= period %><% } %>
+      </div>
+    </div>
+    <div class="page-actions">
+      <% if (report.expense_count > 0) { %>
+        <a class="btn btn-primary" href="/reports/<%= report.id %>/pdf">⬇ Download PDF</a>
+      <% } %>
+      <form method="post" action="/reports/<%= report.id %>/delete"
+            onsubmit="return confirm('Delete this report? Expenses will be kept (unfiled).');" class="inline">
+        <button class="btn btn-danger" type="submit">Delete</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="grid grid-2">
+    <div class="card flush">
+      <div style="padding:16px 18px 4px;"><h2 class="mt-0">Expenses in this report</h2></div>
+      <% if (expenses.length) { %>
+        <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th></th><th>Date</th><th>Merchant</th><th>Category</th><th class="num">Amount</th><th></th></tr>
+          </thead>
+          <tbody>
+          <% expenses.forEach(e => { %>
+            <tr>
+              <td><% if (e.receipt_path) { %>
+                <a href="<%= fileUrl(e.receipt_path) %>" target="_blank">
+                  <img class="receipt-thumb" src="<%= imgUrl(e.receipt_path) %>" alt="" />
+                </a>
+              <% } %></td>
+              <td><%= e.date %></td>
+              <td><a href="/expenses/<%= e.id %>/edit"><%= e.merchant %></a></td>
+              <td class="muted"><%= e.category || '—' %></td>
+              <td class="num"><%= money(e.amount, e.currency) %></td>
+              <td class="num">
+                <form method="post" action="/reports/<%= report.id %>/detach" class="inline">
+                  <input type="hidden" name="expense_id" value="<%= e.id %>" />
+                  <button class="btn btn-ghost btn-sm" type="submit" title="Remove from report">✕</button>
+                </form>
+              </td>
+            </tr>
+          <% }); %>
+          </tbody>
+          <tfoot>
+            <tr><td colspan="4" style="text-align:right;font-weight:600;">Total</td>
+            <td class="num" style="font-weight:700;"><%= money(report.total) %></td><td></td></tr>
+          </tfoot>
+        </table>
+        </div>
+      <% } else { %>
+        <div class="empty">No expenses attached yet. Add some below or from the <a href="/expenses">expenses list</a>.</div>
+      <% } %>
+    </div>
+
+    <div>
+      <div class="card" id="add-expense">
+        <h2 class="mt-0">Add to this report</h2>
+        <div class="page-actions" style="margin-top:4px;">
+          <a class="btn btn-primary" href="/expenses/new?report=<%= report.id %>">+ Add expense</a>
+          <a class="btn" href="/receipts/scan?report=<%= report.id %>">📷 Scan receipt</a>
+        </div>
+      </div>
+
+      <% if (attachable.length) { %>
+      <div class="card">
+        <h2 class="mt-0">Attach expenses</h2>
+        <p class="hint-text">Unfiled expenses you can add to this report.</p>
+        <form method="post" action="/reports/<%= report.id %>/attach">
+          <% attachable.slice(0, 30).forEach(e => { %>
+            <label style="font-weight:400; display:flex; gap:8px; align-items:center; padding:5px 0;">
+              <input type="checkbox" name="expense_ids" value="<%= e.id %>" style="width:auto;" />
+              <span><%= e.date %> · <%= e.merchant %> <span class="muted">(<%= e.category || 'none' %>)</span></span>
+              <span style="margin-left:auto;" class="muted"><%= money(e.amount, e.currency) %></span>
+            </label>
+          <% }); %>
+          <div class="form-actions">
+            <button class="btn btn-primary btn-sm" type="submit">Attach selected</button>
+          </div>
+        </form>
+      </div>
+      <% } %>
+
+      <div class="card">
+        <h2 class="mt-0">Change status</h2>
+        <form method="post" action="/reports/<%= report.id %>/status" class="row">
+          <select name="status">
+            <% statuses.forEach(s => { %>
+              <option value="<%= s %>" <%= report.status === s ? 'selected' : '' %>><%= s %></option>
+            <% }); %>
+          </select>
+          <button class="btn" type="submit">Update</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <h2 class="mt-0">Edit report</h2>
+        <form method="post" action="/reports/<%= report.id %>">
+          <div class="field">
+            <label for="name">Name</label>
+            <input id="name" name="name" type="text" value="<%= report.name %>" required />
+          </div>
+          <div class="field">
+            <label for="purpose">Business purpose</label>
+            <input id="purpose" name="purpose" type="text" value="<%= report.purpose %>" />
+          </div>
+          <div class="field">
+            <label for="description">Notes</label>
+            <textarea id="description" name="description" rows="2"><%= report.description %></textarea>
+          </div>
+          <button class="btn btn-sm" type="submit">Save changes</button>
+        </form>
+      </div>
+    </div>
+  </div>
+<%- include('../_bottom') %>
