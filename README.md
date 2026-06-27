@@ -14,6 +14,19 @@ group expenses into reports, and **export to PDF** (with the receipts embedded).
 - 🔐 Username/password login; **expenses, reports, and receipts are isolated per user**
 - 📱 Installable PWA with a mobile slide-out nav
 
+## Prerequisites
+
+- **Node.js 20+**
+- **A C/C++ toolchain** (or matching prebuilt binaries) so `npm install` can build
+  the native modules `better-sqlite3`, `bcrypt`, and `sharp`. On Debian/Ubuntu:
+  `sudo apt-get install build-essential python3`.
+- **poppler-utils** (provides the `pdftoppm` command) — **optional but recommended**
+  for PDF receipts. `npm install` does **not** install this; use your OS package
+  manager (`sudo apt-get install poppler-utils`, `brew install poppler`, …).
+  - *Without it*, PDF receipts still upload, OCR (Gemini reads PDFs natively),
+    and download — they just lose the in-app image preview/thumbnail and are not
+    embedded in the exported report PDF. Image receipts are unaffected.
+
 ## Quick start
 
 ```bash
@@ -59,7 +72,8 @@ GEMINI_API_KEY=your_key_here
 
 Gemini reads PDF receipts natively (most accurate); images are normalized to
 compact JPEG. PDF receipts are rasterized to PNG for previews and report
-embedding (needs `pdftoppm`/poppler, or `gs`).
+embedding via `pdftoppm` (poppler) — see [Prerequisites](#prerequisites); PDFs
+still OCR and download without it.
 
 ### User accounts & password resets
 

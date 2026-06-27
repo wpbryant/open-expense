@@ -15,6 +15,17 @@ const { loadUser, requireAuth, requireAdmin } = require("./middleware/auth");
 const flash = require("./middleware/flash");
 const { money } = require("./lib/format");
 
+// True if a system executable is on PATH (used to warn about the optional
+// poppler/pdftoppm dependency at startup).
+function hasBin(bin) {
+  try {
+    require("child_process").execFileSync("which", [bin], { stdio: "ignore" });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 const app = express();
 app.disable("x-powered-by");
 app.set("trust proxy", 1);
@@ -89,6 +100,12 @@ if (require.main === module) {
     console.log(`OpenExpense running at ${addr}`);
     if (!ocr.isEnabled()) {
       console.log("  [OCR disabled] Set GEMINI_API_KEY to enable receipt scanning.");
+    }
+    if (!hasBin("pdftoppm")) {
+      console.log(
+        "  [pdftoppm missing] PDF receipts will still upload/OCR/download but" +
+          " won't show a preview or embed in report PDFs. Install poppler-utils."
+      );
     }
     console.log(`  Login: ${config.seedAdmin.username} / ${config.seedAdmin.password}`);
   });
