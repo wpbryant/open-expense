@@ -14,6 +14,8 @@ group expenses into reports, and **export to PDF** (with the receipts embedded).
 - 🔐 Username/password login; **expenses, reports, and receipts are isolated per user**
 - 📱 Installable PWA with a mobile slide-out nav
 
+![alt text](image.png)
+
 ## Prerequisites
 
 - **Node.js 20+**
