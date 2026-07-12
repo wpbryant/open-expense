@@ -9,7 +9,7 @@ const { generateReportPdf } = require("../lib/pdf");
 
 const router = express.Router();
 
-const STATUSES = ["draft", "submitted", "approved", "rejected"];
+const STATUSES = ["draft", "submitted", "approved", "rejected", "reimbursed"];
 
 router.get("/", (req, res) => {
   res.render("reports/index", {

@@ -44,6 +44,32 @@ function reportsWithTotals(userId) {
   );
 }
 
+// Reports can only have expenses added to them while in an "open" state.
+// Once a report is submitted, approved, or reimbursed it locks — it shouldn't
+// change after the fact. Used to build the "Attach to report" list on the
+// expense form.
+const OPEN_REPORT_STATUSES = ["draft", "rejected"];
+
+// Reports an expense can be attached to (open reports only).
+// keepReportId keeps an expense's existing report visible in the dropdown even
+// when that report is locked, so saving an edit never silently detaches it.
+function reportsAttachable(userId, keepReportId) {
+  const keep = keepReportId ? Number(keepReportId) : null;
+  return db.all(
+    `SELECT r.*,
+       COUNT(e.id) AS expense_count,
+       COALESCE(SUM(e.amount), 0) AS total
+     FROM reports r
+     LEFT JOIN expenses e ON e.report_id = r.id
+     WHERE r.user_id = ?
+       AND (r.status IN ('draft', 'rejected') OR r.id IS ?)
+     GROUP BY r.id
+     ORDER BY r.id DESC`,
+    userId,
+    keep
+  );
+}
+
 function getReport(userId, id) {
   return db.get(
     `SELECT r.*,
@@ -124,6 +150,8 @@ module.exports = {
   listExpenses,
   getExpense,
   reportsWithTotals,
+  reportsAttachable,
+  OPEN_REPORT_STATUSES,
   getReport,
   reportExpenses,
   dashboardStats,

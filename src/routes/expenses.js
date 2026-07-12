@@ -83,7 +83,7 @@ router.get("/new", (req, res) => {
       report_id: req.query.report || "",
     },
     categories: queries.categories(),
-    reports: queries.reportsWithTotals(res.locals.currentUser.id),
+    reports: queries.reportsAttachable(res.locals.currentUser.id),
   });
 });
 
@@ -126,7 +126,7 @@ router.get("/:id/edit", (req, res) => {
     ocrError: null,
     expense,
     categories: queries.categories(),
-    reports: queries.reportsWithTotals(userId),
+    reports: queries.reportsAttachable(userId, expense.report_id),
   });
 });
 
@@ -182,7 +182,7 @@ function renderExpenseForm(res, { title, isNew, expense, errors }) {
     ocrError: null,
     expense,
     categories: queries.categories(),
-    reports: queries.reportsWithTotals(res.locals.currentUser.id),
+    reports: queries.reportsAttachable(res.locals.currentUser.id, expense.report_id),
     errors,
   });
 }

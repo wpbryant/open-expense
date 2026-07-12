@@ -87,7 +87,7 @@ router.post("/receipts/scan", upload.single("receipt"), async (req, res, next) =
       ocrError,
       expense,
       categories: queries.categories(),
-      reports: queries.reportsWithTotals(userId),
+      reports: queries.reportsAttachable(userId),
     });
   } catch (e) {
     next(e);

@@ -80,7 +80,7 @@ CREATE TABLE IF NOT EXISTS reports (
   user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   name        TEXT NOT NULL,
   description TEXT NOT NULL DEFAULT '',
-  status      TEXT NOT NULL DEFAULT 'draft',  -- draft|submitted|approved|rejected
+  status      TEXT NOT NULL DEFAULT 'draft',  -- draft|submitted|approved|rejected|reimbursed
   purpose     TEXT NOT NULL DEFAULT '',        -- free-text business purpose
   created_at  TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at  TEXT NOT NULL DEFAULT (datetime('now'))

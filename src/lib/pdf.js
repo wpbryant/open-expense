@@ -106,7 +106,7 @@ function drawHeader(doc, report, preparedBy, currency, total, range, count) {
 }
 
 function statusLabel(s) {
-  return ({ draft: "Draft", submitted: "Submitted", approved: "Approved", rejected: "Rejected" })[s] || s;
+  return ({ draft: "Draft", submitted: "Submitted", approved: "Approved", rejected: "Rejected", reimbursed: "Reimbursed" })[s] || s;
 }
 
 function field(doc, label, value) {
