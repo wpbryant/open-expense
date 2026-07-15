@@ -11,6 +11,9 @@ const { money } = require("./format");
 
 const PAGE = { size: "LETTER", margin: 50 };
 const ACCENT = "#2563eb";
+const INK = "#111827";
+const MUTED = "#6b7280";
+const LINE = "#e5e7eb";
 
 function fmtTotal(amounts, currency) {
   const total = amounts.reduce((a, b) => a + (b.amount || 0), 0);
@@ -65,53 +68,74 @@ async function generateReportPdf(reportId, userId) {
       : "—";
     drawHeader(doc, report, preparedBy, currency, total, range, expenses.length);
     drawSummaryTable(doc, expenses, currency);
-    for (const e of expenses) drawExpensePage(doc, e);
+    // One detail page per expense that has a receipt attached. Expenses
+    // without a receipt appear only in the summary table above.
+    for (const e of expenses) {
+      if (receipts.exists(e.receipt_path)) drawExpensePage(doc, e);
+    }
     doc.end();
   });
 }
 
 function drawHeader(doc, report, preparedBy, currency, total, range, count) {
-  doc
-    .fillColor(ACCENT)
-    .fontSize(22)
-    .font("Helvetica-Bold")
-    .text("Expense Report", { continued: false });
+  const left = PAGE.margin;
+  const right = doc.page.width - PAGE.margin;
+  const contentW = right - left;
+  const colW = 250;
+  const col2X = right - colW;
+  const y0 = doc.y;
 
-  doc.moveDown(0.3);
-  doc.fillColor("#111").fontSize(15).font("Helvetica-Bold").text(report.name);
+  // Title band: document title on the left, total mirrored as a figure on the right.
+  doc.font("Helvetica-Bold").fontSize(9).fillColor(ACCENT);
+  doc.text("EXPENSE REPORT", left, y0, { width: colW });
+  doc.font("Helvetica-Bold").fontSize(18).fillColor(INK);
+  doc.text(report.name || "Untitled report", left, y0 + 14, { width: colW });
+  const bandLeft = doc.y;
 
-  doc.moveDown(0.5);
-  doc.font("Helvetica").fontSize(10).fillColor("#444");
-  field(doc, "Status", statusLabel(report.status));
-  field(doc, "Prepared by", preparedBy || "—");
-  field(doc, "Period", range);
-  field(doc, "Expenses", String(count));
-  field(doc, "Purpose", report.purpose || "—");
+  doc.font("Helvetica-Bold").fontSize(9).fillColor(MUTED);
+  doc.text("TOTAL", col2X, y0, { width: colW, align: "right" });
+  doc.font("Helvetica-Bold").fontSize(22).fillColor(ACCENT);
+  doc.text(money(total, currency), col2X, y0 + 12, { width: colW, align: "right" });
+  const bandRight = doc.y;
 
-  doc.moveDown(0.4);
-  doc
-    .font("Helvetica-Bold")
-    .fontSize(13)
-    .fillColor(ACCENT)
-    .text(`Total: ${money(total, currency)}`);
+  let y = Math.max(bandLeft, bandRight) + 16;
 
-  doc
-    .moveDown(0.2)
-    .strokeColor("#ddd")
-    .moveTo(doc.x, doc.y)
-    .lineTo(doc.page.width - PAGE.margin, doc.y)
-    .stroke();
+  // Metadata grid: two fields per row keeps the header compact.
+  y = metaRow(doc, y, colW, left, col2X, "Status", statusLabel(report.status), "Period", range);
+  y = metaRow(doc, y, colW, left, col2X, "Prepared by", preparedBy || "—", "Expenses", String(count));
+  // Purpose is free text, so give it the full width.
+  y = metaField(doc, left, y, contentW, "Purpose", report.purpose || "—") + 6;
 
-  doc.moveDown(0.6);
+  // Hairline separating the header from the summary table.
+  doc.strokeColor(LINE).lineWidth(1);
+  doc.moveTo(left, y).lineTo(right, y).stroke();
+
+  doc.x = left;
+  doc.y = y + 12;
 }
 
 function statusLabel(s) {
   return ({ draft: "Draft", submitted: "Submitted", approved: "Approved", rejected: "Rejected", reimbursed: "Reimbursed" })[s] || s;
 }
 
-function field(doc, label, value) {
-  doc.font("Helvetica-Bold").fillColor("#666").text(label + ": ", { continued: true });
-  doc.font("Helvetica").fillColor("#222").text(String(value));
+// One inline "LABEL: value" field within a column of width w. Returns the
+// cursor y after the (possibly wrapped) line.
+function metaField(doc, x, y, w, label, value) {
+  const val = String(value == null ? "" : value);
+  doc.x = x;
+  doc.y = y;
+  doc.font("Helvetica-Bold").fontSize(10).fillColor(MUTED);
+  doc.text(label.toUpperCase() + ":", { width: w, continued: true });
+  doc.font("Helvetica").fillColor(INK);
+  doc.text(" " + val, { width: w });
+  return doc.y;
+}
+
+// Two side-by-side fields on one row; returns the y for the next row.
+function metaRow(doc, y, w, x1, x2, l1, v1, l2, v2) {
+  const b1 = metaField(doc, x1, y, w, l1, v1);
+  const b2 = v2 === undefined || v2 === null ? y : metaField(doc, x2, y, w, l2, v2);
+  return Math.max(b1, b2) + 6;
 }
 
 function drawSummaryTable(doc, expenses, currency) {
@@ -209,21 +233,20 @@ function drawExpensePage(doc, e) {
   kv(doc, "Description", e.description || "—");
   doc.moveDown(0.4);
 
-  if (receipts.exists(e.receipt_path)) {
-    doc.fillColor("#666").fontSize(9).text("Receipt:");
-    doc.moveDown(0.2);
-    try {
-      // Embed a renderable image (rasterized PNG for PDFs, the JPEG otherwise).
-      const renderPath = receipts.previewPath(e.receipt_path);
-      const buf = receipts.readBuffer(renderPath);
-      const maxW = doc.page.width - PAGE.margin * 2;
-      const maxH = doc.page.height - doc.y - PAGE.margin - 10;
-      doc.image(buf, { fit: [maxW, maxH], align: "center" });
-    } catch {
-      doc.fillColor("#b00").text("(receipt image could not be embedded)");
-    }
-  } else {
-    doc.fillColor("#999").fontSize(9).text("(no receipt attached)");
+  // drawExpensePage is only called for expenses with a receipt, so embed it
+  // directly. The try/catch covers a missing preview (e.g. PDF rasterization
+  // failed) without leaving a blank page.
+  doc.fillColor("#666").fontSize(9).text("Receipt:");
+  doc.moveDown(0.2);
+  try {
+    // Embed a renderable image (rasterized PNG for PDFs, the JPEG otherwise).
+    const renderPath = receipts.previewPath(e.receipt_path);
+    const buf = receipts.readBuffer(renderPath);
+    const maxW = doc.page.width - PAGE.margin * 2;
+    const maxH = doc.page.height - doc.y - PAGE.margin - 10;
+    doc.image(buf, { fit: [maxW, maxH], align: "center" });
+  } catch {
+    doc.fillColor("#b00").text("(receipt image could not be embedded)");
   }
 }
 
