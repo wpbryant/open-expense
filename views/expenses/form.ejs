@@ -27,9 +27,15 @@
         <% if (ocrConfidence) { %>
           <p class="hint-text">Scan confidence: <span class="badge badge-ocr"><%= ocrConfidence %></span> — please review the fields.</p>
         <% } %>
-        <a href="<%= receiptDownload || receiptPreview %>" target="_blank">
-          <img class="receipt-preview" src="<%= receiptPreview %>" alt="receipt" style="width:100%;" />
+        <a id="receipt-download" href="<%= receiptDownload || receiptPreview %>" target="_blank">
+          <img id="receipt-img" class="receipt-preview" src="<%= receiptPreview %>" alt="receipt" style="width:100%;" />
         </a>
+        <% if (!isNew && !receiptIsPdf) { %>
+          <div style="margin-top:10px;">
+            <button type="button" class="btn btn-ghost btn-sm" id="crop-btn"
+                    data-expense-id="<%= expense.id %>" data-src="<%= receiptPreview %>">✂ Crop receipt</button>
+          </div>
+        <% } %>
         <% if (receiptIsPdf) { %>
           <p class="hint-text" style="margin-top:10px;">Showing first page. <a href="<%= receiptDownload %>" target="_blank">Open original PDF ↗</a></p>
         <% } %>
@@ -38,7 +44,7 @@
 
     <div class="card">
       <form method="post" action="<%= isNew ? '/expenses' : '/expenses/' + expense.id %>">
-        <input type="hidden" name="receipt_path" value="<%= receiptPath || '' %>" />
+        <input type="hidden" id="receipt-path-input" name="receipt_path" value="<%= receiptPath || '' %>" />
 
         <div class="field">
           <label for="merchant">Merchant *</label>
@@ -114,4 +120,21 @@
       </form>
     </div>
   <% } %>
+<% if (!isNew && receiptPreview && !receiptIsPdf) { %>
+  <link rel="stylesheet" href="/lib/cropperjs/cropper.min.css?v=<%= assetVersion %>" />
+  <script src="/lib/cropperjs/cropper.min.js?v=<%= assetVersion %>"></script>
+  <div class="crop-overlay" hidden>
+    <div class="crop-modal">
+      <h3 style="margin-top:0;">Crop receipt</h3>
+      <div class="crop-stage">
+        <img id="crop-image" alt="crop source" />
+      </div>
+      <p class="hint-text" id="crop-error" hidden style="color:var(--red);margin-top:8px;"></p>
+      <div class="form-actions" style="margin-top:12px;">
+        <button type="button" class="btn btn-primary" id="crop-apply">Apply crop</button>
+        <button type="button" class="btn btn-ghost" id="crop-cancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+<% } %>
 <%- include('../_bottom') %>

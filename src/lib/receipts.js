@@ -94,6 +94,41 @@ async function save(buffer, originalName, mimeType, userId) {
   return rel;
 }
 
+/**
+ * Crop a stored image receipt to `box` {left, top, width, height} (pixels),
+ * re-encode as JPEG, and write it as a new file. Coordinates are clamped to
+ * the image bounds. Returns the new relative path; the caller updates the DB
+ * and deletes the old file. Image receipts only — not PDFs.
+ */
+async function crop(rel, userId, box) {
+  const b = box || {};
+  const buf = readBuffer(rel);
+  const meta = await sharp(buf).metadata();
+  const w = Math.max(1, Math.floor(meta.width || 0));
+  const h = Math.max(1, Math.floor(meta.height || 0));
+
+  let left = Math.floor(Number(b.left) || 0);
+  let top = Math.floor(Number(b.top) || 0);
+  let width = Math.floor(Number(b.width) || 0);
+  let height = Math.floor(Number(b.height) || 0);
+
+  left = Math.min(Math.max(left, 0), w - 1);
+  top = Math.min(Math.max(top, 0), h - 1);
+  width = Math.max(1, Math.min(width, w - left));
+  height = Math.max(1, Math.min(height, h - top));
+
+  const out = await sharp(buf)
+    .extract({ left, top, width, height })
+    .jpeg({ quality: 82, mozjpeg: true })
+    .toBuffer();
+
+  const newRel = relPathFor(userId, "cropped", "jpg");
+  const abs = absPath(newRel);
+  fs.mkdirSync(path.dirname(abs), { recursive: true });
+  fs.writeFileSync(abs, out);
+  return newRel;
+}
+
 // Path to a renderable image for a stored receipt (the rasterized PNG for PDFs,
 // the file itself for images). May not exist if rasterization failed.
 function previewPath(rel) {
@@ -138,6 +173,7 @@ function deleteFile(rel) {
 module.exports = {
   save,
   saveNormalized: save, // backwards-compat alias
+  crop,
   readBuffer,
   exists,
   deleteFile,

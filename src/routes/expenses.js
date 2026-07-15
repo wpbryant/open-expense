@@ -168,6 +168,31 @@ router.post("/:id/delete", (req, res) => {
   res.redirect("/expenses");
 });
 
+// Crop the attached receipt image in place (image receipts only — PDFs are
+// rejected). Writes a new file, swaps receipt_path, deletes the old file, and
+// returns the new URLs so the page can update without a full reload.
+router.post("/:id/receipt/crop", async (req, res) => {
+  const userId = res.locals.currentUser.id;
+  const expense = queries.getExpense(userId, req.params.id);
+  if (!expense) return res.status(404).render("error", { message: "Expense not found." });
+  if (!expense.receipt_path || receipts.isPdf(expense.receipt_path)) {
+    return res.status(400).json({ error: "This receipt can't be cropped." });
+  }
+  let newPath;
+  try {
+    newPath = await receipts.crop(expense.receipt_path, userId, req.body || {});
+  } catch (err) {
+    return res.status(400).json({ error: "Could not crop that region." });
+  }
+  const oldPath = expense.receipt_path;
+  db.run(
+    "UPDATE expenses SET receipt_path=?, updated_at=datetime('now') WHERE id=? AND user_id=?",
+    newPath, expense.id, userId
+  );
+  receipts.deleteFile(oldPath);
+  res.json({ path: newPath, previewUrl: imgUrl(newPath), downloadUrl: fileUrl(newPath) });
+});
+
 // helper for re-rendering the form with validation errors
 function renderExpenseForm(res, { title, isNew, expense, errors }) {
   res.status(422).render("expenses/form", {

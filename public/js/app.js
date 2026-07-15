@@ -89,3 +89,93 @@ if ("serviceWorker" in navigator) {
     }, 4500);
   });
 })();
+
+// Receipt crop (expense edit page): open a cropperjs lightbox, POST the crop
+// box to the server, and swap the stored image in place. The overlay markup is
+// only rendered for saved image receipts, so this no-ops on every other page.
+(function () {
+  const overlay = document.querySelector(".crop-overlay");
+  const img = document.getElementById("crop-image");
+  if (!overlay || !img || typeof Cropper === "undefined") return;
+
+  const btn = document.getElementById("crop-btn");
+  const applyBtn = document.getElementById("crop-apply");
+  const cancelBtn = document.getElementById("crop-cancel");
+  const errEl = document.getElementById("crop-error");
+  const receiptImg = document.getElementById("receipt-img");
+  const pathInput = document.getElementById("receipt-path-input");
+  const dl = document.getElementById("receipt-download");
+  let cropper = null;
+
+  const close = () => {
+    if (cropper) {
+      cropper.destroy();
+      cropper = null;
+    }
+    overlay.hidden = true;
+    errEl.hidden = true;
+  };
+
+  const open = () => {
+    errEl.hidden = true;
+    overlay.hidden = false;
+    if (cropper) cropper.destroy();
+    img.src = btn.dataset.src;
+    cropper = new Cropper(img, {
+      viewMode: 1,
+      autoCropArea: 0.9,
+      scalable: false,
+      zoomable: true,
+      rotatable: false,
+      background: false,
+    });
+  };
+
+  btn.addEventListener("click", open);
+  cancelBtn.addEventListener("click", close);
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) close();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !overlay.hidden) close();
+  });
+
+  applyBtn.addEventListener("click", async () => {
+    if (!cropper) return;
+    const d = cropper.getData(true); // {x, y, width, height} rounded, natural px
+    if (!(d.width > 0) || !(d.height > 0)) return;
+    const origText = applyBtn.textContent;
+    applyBtn.disabled = true;
+    applyBtn.textContent = "⏳ Cropping…";
+    errEl.hidden = true;
+    try {
+      const params = new URLSearchParams({
+        left: d.x,
+        top: d.y,
+        width: d.width,
+        height: d.height,
+      });
+      const res = await fetch("/expenses/" + btn.dataset.expenseId + "/receipt/crop", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: params.toString(),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.error || "Crop failed.");
+      }
+      const data = await res.json();
+      if (receiptImg) receiptImg.src = data.previewUrl;
+      if (pathInput) pathInput.value = data.path;
+      if (dl) dl.href = data.downloadUrl;
+      btn.dataset.src = data.previewUrl;
+      close();
+    } catch (e2) {
+      errEl.textContent = e2.message || "Could not crop the image.";
+      errEl.hidden = false;
+    } finally {
+      applyBtn.disabled = false;
+      applyBtn.textContent = origText;
+    }
+  });
+})();
