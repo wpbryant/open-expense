@@ -1,8 +1,12 @@
 <%- include('../_top', {title: title}) %>
+  <%
+    var backHref = expense.report_id ? '/reports/' + expense.report_id : '/expenses';
+    var backLabel = expense.report_id ? '← Back to report' : '← Back to expenses';
+  %>
   <div class="page-head">
     <h1><%= title %></h1>
     <div class="page-actions">
-      <a class="btn btn-ghost" href="/expenses">← Back to expenses</a>
+      <a class="btn btn-ghost" href="<%= backHref %>"><%= backLabel %></a>
     </div>
   </div>
 
@@ -95,7 +99,7 @@
 
         <div class="form-actions">
           <button class="btn btn-primary" type="submit"><%= isNew ? 'Add expense' : 'Save changes' %></button>
-          <a class="btn btn-ghost" href="/expenses">Cancel</a>
+          <a class="btn btn-ghost" href="<%= backHref %>">Cancel</a>
         </div>
       </form>
     </div>
