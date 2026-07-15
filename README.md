@@ -5,9 +5,10 @@ but local-first and tiny. Upload a receipt, let **Gemini** read it into an expen
 group expenses into reports, and **export to PDF** (with the receipts embedded).
 
 - 📷 Scan a receipt (image **or PDF**) → OCR pre-fills the expense form for review
+- ✂️ Crop receipt images right on the expense page — the server cuts them with `sharp` (image receipts; PDFs excluded)
 - ✍️ Add / edit expenses manually; filter, search, attach to reports
 - 📁 Group expenses into reports, set status (draft → submitted → approved)
-- 📄 Download a report as a PDF (summary table + each receipt embedded)
+- 📄 Download a report as a PDF — clean two-column header, summary table, and a receipt page per expense that has one
 - 📊 Dashboard with unsubmitted/unfiled totals and a category breakdown
 - 🛠 Admin panel: users (name + email) + categories
 - 🔑 Admin-only password resets (emailed link) — deliberately never on the login page
@@ -90,7 +91,7 @@ hashed in the DB, expire after 24h, and are single-use.
 
 - **Dashboard** — unsubmitted/unfiled totals, recent expenses, category breakdown.
 - **Scan** — upload a receipt; Gemini pre-fills the fields for you to review.
-- **Expenses** — list, filter, add manually, edit, delete, attach to a report.
+- **Expenses** — list, filter, add manually, edit, delete, crop receipts, attach to a report.
 - **Reports** — create, attach expenses (Add / Scan buttons), set status, **Download PDF**.
 - **Admin** — manage users and categories (admins only).
 
@@ -126,7 +127,7 @@ src/lib/        config, db, queries, ocr, pdf, receipts, urls, auth, passwords,
 src/middleware/ auth guards (requireAuth / requireAdmin), flash messages
 src/routes/     auth, dashboard, expenses, receipts, reports, admin
 views/          EJS templates (server-rendered)
-public/         CSS, JS, manifest, service worker, icons  (PWA)
+public/         CSS, JS, vendored client libs (cropperjs), manifest, service worker, icons  (PWA)
 data/           SQLite db + receipt images (runtime, gitignored)
 ```
 
