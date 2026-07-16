@@ -70,6 +70,8 @@ router.get("/new", (req, res) => {
     fromScan: false,
     receiptPath: null,
     receiptPreview: null,
+    receiptDownload: null,
+    receiptIsPdf: false,
     ocrConfidence: null,
     ocrError: null,
     expense: {

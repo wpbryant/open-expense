@@ -21,26 +21,42 @@
   <% } %>
 
   <div class="grid grid-2">
-    <% if (receiptPreview) { %>
-      <div class="card">
-        <h2 class="mt-0">Receipt <% if (receiptIsPdf) { %><span class="badge badge-ocr">PDF</span><% } %></h2>
-        <% if (ocrConfidence) { %>
-          <p class="hint-text">Scan confidence: <span class="badge badge-ocr"><%= ocrConfidence %></span> — please review the fields.</p>
-        <% } %>
-        <a id="receipt-download" href="<%= receiptDownload || receiptPreview %>" target="_blank">
-          <img id="receipt-img" class="receipt-preview" src="<%= receiptPreview %>" alt="receipt" style="width:100%;" />
-        </a>
-        <% if (!isNew && !receiptIsPdf) { %>
-          <div style="margin-top:10px;">
-            <button type="button" class="btn btn-ghost btn-sm" id="crop-btn"
-                    data-expense-id="<%= expense.id %>" data-src="<%= receiptPreview %>">✂ Crop receipt</button>
-          </div>
-        <% } %>
-        <% if (receiptIsPdf) { %>
-          <p class="hint-text" style="margin-top:10px;">Showing first page. <a href="<%= receiptDownload %>" target="_blank">Open original PDF ↗</a></p>
-        <% } %>
+    <div class="card" id="receipt-card"<% if (!isNew) { %> data-expense-id="<%= expense.id %>"<% } %>>
+      <h2 class="mt-0">
+        Receipt
+        <span class="badge badge-ocr" id="receipt-pdf-badge"<% if (!receiptIsPdf) { %> hidden<% } %>>PDF</span>
+      </h2>
+      <% if (ocrConfidence) { %>
+        <p class="hint-text">Scan confidence: <span class="badge badge-ocr"><%= ocrConfidence %></span> — please review the fields.</p>
+      <% } %>
+
+      <%#no receipt yet: offer to attach one (no OCR) %>
+      <div class="receipt-placeholder" id="receipt-placeholder"<% if (receiptPreview) { %> hidden<% } %>>
+        <p class="hint-text" style="margin:0 0 10px;">No receipt attached.</p>
+        <button type="button" class="btn btn-primary btn-sm" id="receipt-attach-btn">📎 Attach receipt</button>
       </div>
-    <% } %>
+
+      <%#receipt present: preview + actions %>
+      <div id="receipt-view"<% if (!receiptPreview) { %> hidden<% } %>>
+        <a id="receipt-download" href="<%= receiptDownload || receiptPreview %>" target="_blank">
+          <img id="receipt-img" class="receipt-preview" src="<%= receiptPreview %>" alt="receipt" style="width:100%;"<% if (receiptIsPdf) { %> hidden<% } %> />
+        </a>
+        <p class="hint-text" id="receipt-pdf-hint" style="margin-top:10px;"<% if (!receiptIsPdf) { %> hidden<% } %>>
+          PDF receipt — <a id="receipt-pdf-link" href="<%= receiptDownload %>" target="_blank">open original ↗</a>
+        </p>
+        <div style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap;">
+          <% if (!isNew) { %>
+            <button type="button" class="btn btn-ghost btn-sm" id="crop-btn"
+                    data-expense-id="<%= expense.id %>" data-src="<%= receiptPreview %>"<% if (receiptIsPdf) { %> hidden<% } %>>✂ Crop receipt</button>
+          <% } %>
+          <button type="button" class="btn btn-ghost btn-sm" id="receipt-change-btn">↻ Change receipt</button>
+        </div>
+      </div>
+
+      <%#shared upload input + error, used by Attach and Change %>
+      <input type="file" id="receipt-upload" accept="image/*,application/pdf" hidden />
+      <p class="hint-text" id="receipt-error" hidden style="color:var(--red);margin-top:8px;"></p>
+    </div>
 
     <div class="card">
       <form method="post" action="<%= isNew ? '/expenses' : '/expenses/' + expense.id %>">
@@ -120,7 +136,7 @@
       </form>
     </div>
   <% } %>
-<% if (!isNew && receiptPreview && !receiptIsPdf) { %>
+<% if (!isNew) { %>
   <link rel="stylesheet" href="/lib/cropperjs/cropper.min.css?v=<%= assetVersion %>" />
   <script src="/lib/cropperjs/cropper.min.js?v=<%= assetVersion %>"></script>
   <div class="crop-overlay" hidden>

@@ -8,6 +8,7 @@ const express = require("express");
 const path = require("path");
 const multer = require("multer");
 const config = require("../lib/config");
+const db = require("../lib/db");
 const { requireAuth } = require("../middleware/auth");
 const receipts = require("../lib/receipts");
 const ocr = require("../lib/ocr");
@@ -88,6 +89,43 @@ router.post("/receipts/scan", upload.single("receipt"), async (req, res, next) =
       expense,
       categories: queries.categories(),
       reports: queries.reportsAttachable(userId),
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// Upload a receipt without OCR. If `expense_id` is present (and owned), the
+// receipt is attached to that expense immediately, replacing + deleting any
+// previous one. Without it, the file is staged and its path returned so the
+// expense form's hidden field carries it until the expense is saved (the
+// manual "Add expense" path). Returns JSON for an in-place preview swap.
+router.post("/receipts/upload", upload.single("receipt"), async (req, res, next) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: "Please choose an image or PDF receipt." });
+    }
+    const userId = res.locals.currentUser.id;
+    const mime = req.file.mimetype || (receipts.isPdf(req.file.originalname) ? "application/pdf" : "image/jpeg");
+    const newRel = await receipts.save(req.file.buffer, req.file.originalname, mime, userId);
+
+    const expenseId = Number(req.body.expense_id);
+    if (expenseId) {
+      const existing = queries.getExpense(userId, expenseId);
+      if (!existing) return res.status(404).json({ error: "Expense not found." });
+      const oldPath = existing.receipt_path;
+      db.run(
+        "UPDATE expenses SET receipt_path=?, updated_at=datetime('now') WHERE id=? AND user_id=?",
+        newRel, existing.id, userId
+      );
+      if (oldPath && oldPath !== newRel) receipts.deleteFile(oldPath);
+    }
+
+    res.json({
+      path: newRel,
+      previewUrl: imgUrl(newRel),
+      downloadUrl: fileUrl(newRel),
+      isPdf: receipts.isPdf(newRel),
     });
   } catch (e) {
     next(e);

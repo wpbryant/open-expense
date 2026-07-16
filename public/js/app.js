@@ -179,3 +179,71 @@ if ("serviceWorker" in navigator) {
     }
   });
 })();
+
+// Receipt attach/replace (expense form): upload a receipt image/PDF without OCR.
+// For an existing expense the upload attaches/replaces immediately; for a new
+// expense it stages the path into the hidden field until the form is saved.
+(function () {
+  const card = document.getElementById("receipt-card");
+  const fileInput = document.getElementById("receipt-upload");
+  if (!card || !fileInput) return;
+
+  const attachBtn = document.getElementById("receipt-attach-btn");
+  const changeBtn = document.getElementById("receipt-change-btn");
+  const placeholder = document.getElementById("receipt-placeholder");
+  const view = document.getElementById("receipt-view");
+  const img = document.getElementById("receipt-img");
+  const dl = document.getElementById("receipt-download");
+  const pdfBadge = document.getElementById("receipt-pdf-badge");
+  const pdfHint = document.getElementById("receipt-pdf-hint");
+  const pdfLink = document.getElementById("receipt-pdf-link");
+  const cropBtn = document.getElementById("crop-btn");
+  const pathInput = document.getElementById("receipt-path-input");
+  const errEl = document.getElementById("receipt-error");
+
+  const pick = () => fileInput.click();
+  if (attachBtn) attachBtn.addEventListener("click", pick);
+  if (changeBtn) changeBtn.addEventListener("click", pick);
+
+  const showReceipt = (data) => {
+    if (pathInput) pathInput.value = data.path;
+    if (placeholder) placeholder.hidden = true;
+    if (view) view.hidden = false;
+    if (img) img.src = data.previewUrl;
+    if (dl) dl.href = data.downloadUrl;
+    const isPdf = !!data.isPdf;
+    if (img) img.hidden = isPdf;
+    if (pdfBadge) pdfBadge.hidden = !isPdf;
+    if (pdfHint) pdfHint.hidden = !isPdf;
+    if (pdfLink && data.downloadUrl) pdfLink.href = data.downloadUrl;
+    if (cropBtn) {
+      cropBtn.hidden = isPdf;
+      cropBtn.dataset.src = data.previewUrl;
+    }
+    if (errEl) errEl.hidden = true;
+  };
+
+  fileInput.addEventListener("change", async () => {
+    const file = fileInput.files && fileInput.files[0];
+    if (!file) return;
+    if (errEl) errEl.hidden = true;
+    const fd = new FormData();
+    fd.append("receipt", file);
+    if (card.dataset.expenseId) fd.append("expense_id", card.dataset.expenseId);
+    try {
+      const res = await fetch("/receipts/upload", { method: "POST", body: fd });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.error || "Upload failed.");
+      }
+      showReceipt(await res.json());
+    } catch (e) {
+      if (errEl) {
+        errEl.textContent = e.message || "Could not attach that receipt.";
+        errEl.hidden = false;
+      }
+    } finally {
+      fileInput.value = ""; // allow re-picking the same file
+    }
+  });
+})();

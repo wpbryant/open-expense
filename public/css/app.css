@@ -356,3 +356,18 @@ ul.clean { list-style: none; padding: 0; margin: 0; }
   background: #000;
 }
 .crop-stage img { display: block; max-width: 100%; height: auto; }
+
+/* Empty receipt tile: a clear "attach a receipt" target. */
+.receipt-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 8px;
+  min-height: 180px;
+  padding: 24px 16px;
+  border: 1.5px dashed var(--line);
+  border-radius: var(--radius);
+  background: #fbfcfe;
+}

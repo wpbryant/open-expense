@@ -1,6 +1,6 @@
 {
   "name": "open-expense",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "A small, composable expense tracking PWA — upload receipts, OCR them with Gemini, build reports, export to PDF.",
   "type": "commonjs",
   "main": "src/server.js",
