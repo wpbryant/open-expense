@@ -190,6 +190,7 @@ if ("serviceWorker" in navigator) {
 
   const attachBtn = document.getElementById("receipt-attach-btn");
   const changeBtn = document.getElementById("receipt-change-btn");
+  const removeBtn = document.getElementById("receipt-remove-btn");
   const placeholder = document.getElementById("receipt-placeholder");
   const view = document.getElementById("receipt-view");
   const img = document.getElementById("receipt-img");
@@ -205,6 +206,38 @@ if ("serviceWorker" in navigator) {
   if (attachBtn) attachBtn.addEventListener("click", pick);
   if (changeBtn) changeBtn.addEventListener("click", pick);
 
+  const resetToPlaceholder = () => {
+    if (pathInput) pathInput.value = "";
+    if (view) view.hidden = true;
+    if (placeholder) placeholder.hidden = false;
+    if (errEl) errEl.hidden = true;
+  };
+
+  if (removeBtn) {
+    removeBtn.addEventListener("click", async () => {
+      if (!confirm("Remove this receipt? The attached file will be deleted.")) return;
+      if (errEl) errEl.hidden = true;
+      const expenseId = card.dataset.expenseId;
+      try {
+        // Existing expense: clear it server-side. New (unsaved) expense: just
+        // drop the staged path from the hidden field.
+        if (expenseId) {
+          const res = await fetch("/expenses/" + expenseId + "/receipt/remove", { method: "POST" });
+          if (!res.ok) {
+            const j = await res.json().catch(() => ({}));
+            throw new Error(j.error || "Could not remove the receipt.");
+          }
+        }
+        resetToPlaceholder();
+      } catch (e) {
+        if (errEl) {
+          errEl.textContent = e.message || "Could not remove the receipt.";
+          errEl.hidden = false;
+        }
+      }
+    });
+  }
+
   const showReceipt = (data) => {
     if (pathInput) pathInput.value = data.path;
     if (placeholder) placeholder.hidden = true;
@@ -212,7 +245,6 @@ if ("serviceWorker" in navigator) {
     if (img) img.src = data.previewUrl;
     if (dl) dl.href = data.downloadUrl;
     const isPdf = !!data.isPdf;
-    if (img) img.hidden = isPdf;
     if (pdfBadge) pdfBadge.hidden = !isPdf;
     if (pdfHint) pdfHint.hidden = !isPdf;
     if (pdfLink && data.downloadUrl) pdfLink.href = data.downloadUrl;

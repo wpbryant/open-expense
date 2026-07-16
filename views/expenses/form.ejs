@@ -39,7 +39,7 @@
       <%#receipt present: preview + actions %>
       <div id="receipt-view"<% if (!receiptPreview) { %> hidden<% } %>>
         <a id="receipt-download" href="<%= receiptDownload || receiptPreview %>" target="_blank">
-          <img id="receipt-img" class="receipt-preview" src="<%= receiptPreview %>" alt="receipt" style="width:100%;"<% if (receiptIsPdf) { %> hidden<% } %> />
+          <img id="receipt-img" class="receipt-preview" src="<%= receiptPreview %>" alt="receipt" style="width:100%;" />
         </a>
         <p class="hint-text" id="receipt-pdf-hint" style="margin-top:10px;"<% if (!receiptIsPdf) { %> hidden<% } %>>
           PDF receipt — <a id="receipt-pdf-link" href="<%= receiptDownload %>" target="_blank">open original ↗</a>
@@ -50,6 +50,7 @@
                     data-expense-id="<%= expense.id %>" data-src="<%= receiptPreview %>"<% if (receiptIsPdf) { %> hidden<% } %>>✂ Crop receipt</button>
           <% } %>
           <button type="button" class="btn btn-ghost btn-sm" id="receipt-change-btn">↻ Change receipt</button>
+          <button type="button" class="btn btn-ghost btn-sm" id="receipt-remove-btn">🗑 Remove receipt</button>
         </div>
       </div>
 

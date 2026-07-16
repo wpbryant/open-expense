@@ -195,6 +195,21 @@ router.post("/:id/receipt/crop", async (req, res) => {
   res.json({ path: newPath, previewUrl: imgUrl(newPath), downloadUrl: fileUrl(newPath) });
 });
 
+// Detach the receipt from an expense: delete the file and clear receipt_path.
+router.post("/:id/receipt/remove", (req, res) => {
+  const userId = res.locals.currentUser.id;
+  const expense = queries.getExpense(userId, req.params.id);
+  if (!expense) return res.status(404).render("error", { message: "Expense not found." });
+  if (expense.receipt_path) {
+    receipts.deleteFile(expense.receipt_path);
+    db.run(
+      "UPDATE expenses SET receipt_path=NULL, updated_at=datetime('now') WHERE id=? AND user_id=?",
+      expense.id, userId
+    );
+  }
+  res.json({ ok: true });
+});
+
 // helper for re-rendering the form with validation errors
 function renderExpenseForm(res, { title, isNew, expense, errors }) {
   res.status(422).render("expenses/form", {
