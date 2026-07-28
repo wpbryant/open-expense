@@ -12,6 +12,16 @@
                placeholder="e.g. June 2026 — Client Trip" required autofocus />
       </div>
       <div class="field">
+        <label for="project_name">Project name</label>
+        <input id="project_name" name="project_name" type="text" value="<%= report.project_name %>"
+               placeholder="e.g. Q3 Roadshow" />
+      </div>
+      <div class="field">
+        <label for="product_in_focus">Product in focus</label>
+        <input id="product_in_focus" name="product_in_focus" type="text" value="<%= report.product_in_focus %>"
+               placeholder="e.g. Widget X" />
+      </div>
+      <div class="field">
         <label for="purpose">Business purpose</label>
         <input id="purpose" name="purpose" type="text" value="<%= report.purpose %>"
                placeholder="Why these expenses were incurred" />

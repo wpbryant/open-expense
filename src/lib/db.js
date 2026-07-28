@@ -68,6 +68,7 @@ CREATE TABLE IF NOT EXISTS expenses (
   description    TEXT NOT NULL DEFAULT '',
   category       TEXT NOT NULL DEFAULT '',
   payment_method TEXT NOT NULL DEFAULT '',
+  chargeable_to  TEXT NOT NULL DEFAULT '',
   receipt_path   TEXT,                     -- relative path under receipts dir
   ocr_confidence TEXT,                     -- 'high'|'medium'|'low'|null
   ocr_raw        TEXT,                     -- raw JSON string from OCR
@@ -82,6 +83,8 @@ CREATE TABLE IF NOT EXISTS reports (
   description TEXT NOT NULL DEFAULT '',
   status      TEXT NOT NULL DEFAULT 'draft',  -- draft|submitted|approved|rejected|reimbursed
   purpose     TEXT NOT NULL DEFAULT '',        -- free-text business purpose
+  project_name     TEXT NOT NULL DEFAULT '',   -- free-text project this report belongs to
+  product_in_focus TEXT NOT NULL DEFAULT '',   -- free-text product in focus
   created_at  TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -97,6 +100,9 @@ function migrate(db) {
   ensureColumn(db, "users", "first_name", "TEXT NOT NULL DEFAULT ''");
   ensureColumn(db, "users", "last_name", "TEXT NOT NULL DEFAULT ''");
   ensureColumn(db, "users", "email", "TEXT NOT NULL DEFAULT ''");
+  ensureColumn(db, "reports", "project_name", "TEXT NOT NULL DEFAULT ''");
+  ensureColumn(db, "reports", "product_in_focus", "TEXT NOT NULL DEFAULT ''");
+  ensureColumn(db, "expenses", "chargeable_to", "TEXT NOT NULL DEFAULT ''");
 }
 
 // Add a column only if it doesn't already exist (idempotent ALTER TABLE).

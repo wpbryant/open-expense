@@ -19,6 +19,7 @@ function parseExpense(body) {
     description: String(body.description || "").trim(),
     category: String(body.category || "").trim(),
     payment_method: String(body.payment_method || "").trim(),
+    chargeable_to: String(body.chargeable_to || "").trim(),
     report_id: body.report_id ? Number(body.report_id) : null,
     receipt_path: String(body.receipt_path || "").trim() || null,
   };
@@ -81,6 +82,7 @@ router.get("/new", (req, res) => {
       date: req.query.date || today(),
       category: req.query.category || "",
       payment_method: "",
+      chargeable_to: "",
       description: "",
       report_id: req.query.report || "",
     },
@@ -102,9 +104,9 @@ router.post("/", (req, res) => {
   }
   const info = db.run(
     `INSERT INTO expenses
-      (user_id, report_id, amount, currency, date, merchant, description, category, payment_method, receipt_path)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    userId, e.report_id, e.amount, e.currency, e.date, e.merchant, e.description, e.category, e.payment_method, e.receipt_path
+      (user_id, report_id, amount, currency, date, merchant, description, category, payment_method, chargeable_to, receipt_path)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    userId, e.report_id, e.amount, e.currency, e.date, e.merchant, e.description, e.category, e.payment_method, e.chargeable_to, e.receipt_path
   );
   req.flash("success", "Expense added.");
   res.redirect("/expenses/" + info.lastInsertRowid + "/edit");
@@ -151,10 +153,10 @@ router.post("/:id", (req, res) => {
   db.run(
     `UPDATE expenses SET
        amount=?, currency=?, date=?, merchant=?, description=?, category=?,
-       payment_method=?, report_id=?, receipt_path=?, updated_at=datetime('now')
+       payment_method=?, chargeable_to=?, report_id=?, receipt_path=?, updated_at=datetime('now')
      WHERE id=? AND user_id=?`,
     e.amount, e.currency, e.date, e.merchant, e.description, e.category,
-    e.payment_method, e.report_id, receiptPath, existing.id, userId
+    e.payment_method, e.chargeable_to, e.report_id, receiptPath, existing.id, userId
   );
   req.flash("success", "Expense saved.");
   res.redirect("/expenses/" + existing.id + "/edit");

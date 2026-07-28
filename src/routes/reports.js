@@ -21,7 +21,7 @@ router.get("/new", (req, res) => {
   res.render("reports/form", {
     title: "New report",
     isNew: true,
-    report: { name: "", description: "", purpose: "", status: "draft" },
+    report: { name: "", description: "", purpose: "", project_name: "", product_in_focus: "", status: "draft" },
     statuses: STATUSES,
   });
 });
@@ -35,8 +35,9 @@ router.post("/", (req, res) => {
   }
   const status = STATUSES.includes(req.body.status) ? req.body.status : "draft";
   const info = db.run(
-    "INSERT INTO reports (user_id, name, description, purpose, status) VALUES (?, ?, ?, ?, ?)",
-    userId, name, String(req.body.description || "").trim(), String(req.body.purpose || "").trim(), status
+    "INSERT INTO reports (user_id, name, description, purpose, project_name, product_in_focus, status) VALUES (?, ?, ?, ?, ?, ?, ?)",
+    userId, name, String(req.body.description || "").trim(), String(req.body.purpose || "").trim(),
+    String(req.body.project_name || "").trim(), String(req.body.product_in_focus || "").trim(), status
   );
   req.flash("success", "Report created.");
   res.redirect("/reports/" + info.lastInsertRowid);
@@ -86,8 +87,9 @@ router.post("/:id", (req, res) => {
   }
   const status = STATUSES.includes(req.body.status) ? req.body.status : report.status;
   db.run(
-    `UPDATE reports SET name=?, description=?, purpose=?, status=?, updated_at=datetime('now') WHERE id=? AND user_id=?`,
-    name, String(req.body.description || "").trim(), String(req.body.purpose || "").trim(), status, report.id, userId
+    `UPDATE reports SET name=?, description=?, purpose=?, project_name=?, product_in_focus=?, status=?, updated_at=datetime('now') WHERE id=? AND user_id=?`,
+    name, String(req.body.description || "").trim(), String(req.body.purpose || "").trim(),
+    String(req.body.project_name || "").trim(), String(req.body.product_in_focus || "").trim(), status, report.id, userId
   );
   req.flash("success", "Report updated.");
   res.redirect("/reports/" + report.id);

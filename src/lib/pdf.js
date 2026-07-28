@@ -67,7 +67,7 @@ async function generateReportPdf(reportId, userId) {
       ? [owner.first_name, owner.last_name].filter(Boolean).join(" ") || owner.username
       : "—";
     drawHeader(doc, report, preparedBy, currency, total, range, expenses.length);
-    drawSummaryTable(doc, expenses, currency);
+    drawSummaryTable(doc, expenses, currency, report, preparedBy);
     // One detail page per expense that has a receipt attached. Expenses
     // without a receipt appear only in the summary table above.
     for (const e of expenses) {
@@ -138,34 +138,69 @@ function metaRow(doc, y, w, x1, x2, l1, v1, l2, v2) {
   return Math.max(b1, b2) + 6;
 }
 
-function drawSummaryTable(doc, expenses, currency) {
+const MONTHS = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+
+// "2026-07-13" -> "13July2026" (day unpadded, full month name, full year).
+// Parsed manually — new Date("YYYY-MM-DD") is UTC and can shift the day in
+// some timezones.
+function expenseDateToken(iso) {
+  const m = /^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(String(iso || ""));
+  if (!m) return String(iso || "");
+  return String(Number(m[3])) + MONTHS[Number(m[2]) - 1] + m[1];
+}
+
+// Combined narrative for the summary table's "Description" column, in the
+// requested order. Blank components are skipped and the rest joined with ", ".
+// `ownerName`, `report.purpose/project_name/product_in_focus` are constant per
+// report; category / date / chargeable_to / description vary per expense.
+function combinedDescription(e, report, ownerName) {
+  const parts = [
+    ownerName,
+    e.category,
+    report.purpose,
+    report.project_name,
+    expenseDateToken(e.date),
+    report.product_in_focus,
+    e.chargeable_to ? "Chargeable To " + e.chargeable_to : "",
+    e.description,
+  ];
+  return parts
+    .map((p) => (p == null ? "" : String(p).trim()))
+    .filter((p) => p !== "")
+    .join(", ");
+}
+
+function drawSummaryTable(doc, expenses, currency, report, ownerName) {
   doc.font("Helvetica-Bold").fontSize(12).fillColor("#111").text("Summary");
   doc.moveDown(0.3);
 
   const left = PAGE.margin;
   const tableW = doc.page.width - PAGE.margin * 2;
-  // Column widths sum to tableW (LETTER 612 - 2*50 = 512).
+  // Column widths sum to tableW (LETTER 612 - 2*50 = 512). The Description
+  // column carries the combined narrative, so it gets the bulk of the width.
   const cols = [
-    { key: "date", label: "Date", w: 64 },
-    { key: "merchant", label: "Merchant", w: 124 },
-    { key: "category", label: "Category", w: 104 },
-    { key: "description", label: "Description", w: 148 },
+    { key: "date", label: "Date", w: 60 },
+    { key: "merchant", label: "Merchant", w: 90 },
+    { key: "description", label: "Description", w: 290 },
     { key: "amount", label: "Amount", w: 72, align: "right" },
   ];
   const padY = 4;
   const headerH = 18;
 
   const cellText = (e, c) => {
-    let v = e[c.key];
-    if (c.key === "amount") v = money(e.amount, currency);
-    return String(v == null ? "" : v);
+    if (c.key === "amount") return money(e.amount, currency);
+    if (c.key === "description") return combinedDescription(e, report, ownerName);
+    return String(e[c.key] == null ? "" : e[c.key]);
   };
 
   // header row
   let y = doc.y;
   doc.rect(left, y, tableW, headerH).fill(ACCENT);
   let x = left;
-  doc.font("Helvetica-Bold").fontSize(9).fillColor("#fff");
+  doc.font("Helvetica-Bold").fontSize(8).fillColor("#fff");
   cols.forEach((c) => {
     doc.text(c.label, x + 3, y + 5, { width: c.w - 6, align: c.align || "left" });
     x += c.w;
@@ -173,7 +208,7 @@ function drawSummaryTable(doc, expenses, currency) {
   y += headerH;
 
   // body — rows expand to fit wrapped content (no truncation)
-  doc.font("Helvetica").fontSize(9);
+  doc.font("Helvetica").fontSize(8);
   for (let i = 0; i < expenses.length; i++) {
     const e = expenses[i];
     const heights = cols.map((c) =>
@@ -205,13 +240,13 @@ function drawSummaryTable(doc, expenses, currency) {
     doc.addPage();
     y = PAGE.margin;
   }
-  const totalW = cols[0].w + cols[1].w + cols[2].w + cols[3].w;
+  const totalW = cols[0].w + cols[1].w + cols[2].w;
   const amountX = left + totalW;
   doc.rect(left, y, tableW, headerH).fill("#e2e8f0");
-  doc.font("Helvetica-Bold").fontSize(9).fillColor("#111");
+  doc.font("Helvetica-Bold").fontSize(8).fillColor("#111");
   doc.text("Total", left + 3, y + 5, { width: totalW - 6 });
   doc.text(money(total, currency), amountX + 3, y + 5, {
-    width: cols[4].w - 6,
+    width: cols[3].w - 6,
     align: "right",
   });
   doc.y = y + headerH + 14;

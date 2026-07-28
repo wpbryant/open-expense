@@ -87,7 +87,7 @@
           </div>
         </div>
 
-        <div class="row">
+        <div class="row-3">
           <div class="field">
             <label for="category">Category</label>
             <select id="category" name="category">
@@ -100,6 +100,10 @@
           <div class="field">
             <label for="payment_method">Payment method</label>
             <input id="payment_method" name="payment_method" type="text" value="<%= expense.payment_method %>" placeholder="VISA, Cash…" />
+          </div>
+          <div class="field">
+            <label for="chargeable_to">Chargeable to</label>
+            <input id="chargeable_to" name="chargeable_to" type="text" value="<%= expense.chargeable_to %>" placeholder="Who/what this is billed to" />
           </div>
         </div>
 

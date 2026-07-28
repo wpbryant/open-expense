@@ -9,6 +9,8 @@
         <%= report.expense_count %> <%= report.expense_count === 1 ? 'expense' : 'expenses' %>
         · <%= money(report.total) %>
         <% if (dates.length) { %> · <%= period %><% } %>
+        <% if (report.project_name) { %> · Project: <%= report.project_name %><% } %>
+        <% if (report.product_in_focus) { %> · Product: <%= report.product_in_focus %><% } %>
       </div>
     </div>
     <div class="page-actions">
@@ -29,7 +31,7 @@
         <div class="table-wrap">
         <table>
           <thead>
-            <tr><th></th><th>Date</th><th>Merchant</th><th>Category</th><th class="num">Amount</th><th></th></tr>
+            <tr><th></th><th>Date</th><th>Merchant</th><th>Category</th><th>Chargeable to</th><th class="num">Amount</th><th></th></tr>
           </thead>
           <tbody>
           <% expenses.forEach(e => { %>
@@ -42,6 +44,7 @@
               <td><%= e.date %></td>
               <td><a href="/expenses/<%= e.id %>/edit"><%= e.merchant %></a></td>
               <td class="muted"><%= e.category || '—' %></td>
+              <td class="muted"><%= e.chargeable_to || '—' %></td>
               <td class="num"><%= money(e.amount, e.currency) %></td>
               <td class="num">
                 <form method="post" action="/reports/<%= report.id %>/detach" class="inline">
@@ -53,7 +56,7 @@
           <% }); %>
           </tbody>
           <tfoot>
-            <tr><td colspan="4" style="text-align:right;font-weight:600;">Total</td>
+            <tr><td colspan="5" style="text-align:right;font-weight:600;">Total</td>
             <td class="num" style="font-weight:700;"><%= money(report.total) %></td><td></td></tr>
           </tfoot>
         </table>
@@ -109,6 +112,14 @@
           <div class="field">
             <label for="name">Name</label>
             <input id="name" name="name" type="text" value="<%= report.name %>" required />
+          </div>
+          <div class="field">
+            <label for="project_name">Project name</label>
+            <input id="project_name" name="project_name" type="text" value="<%= report.project_name %>" />
+          </div>
+          <div class="field">
+            <label for="product_in_focus">Product in focus</label>
+            <input id="product_in_focus" name="product_in_focus" type="text" value="<%= report.product_in_focus %>" />
           </div>
           <div class="field">
             <label for="purpose">Business purpose</label>
