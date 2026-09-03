@@ -10,6 +10,8 @@ const { requireAdmin } = require("../middleware/auth");
 const queries = require("../lib/queries");
 const passwords = require("../lib/passwords");
 const mail = require("../lib/mail");
+const settings = require("../lib/settings");
+const maps = require("../lib/maps");
 
 const router = express.Router();
 
@@ -180,5 +182,31 @@ function usageMap() {
   for (const r of rows) m[(r.category || "").toLowerCase()] = r.n;
   return m;
 }
+
+// --- Settings ---------------------------------------------------------------
+
+router.get("/settings", (req, res) => {
+  res.render("admin/settings", {
+    mileage: settings.mileage(),
+    mapsConfigured: maps.isConfigured(),
+  });
+});
+
+router.post("/settings", (req, res) => {
+  const rate = Number(String(req.body.mileage_rate || "").replace(/[^0-9.]/g, ""));
+  const unit = String(req.body.mileage_unit || "").trim().toLowerCase();
+  if (!(rate > 0) || rate > 100) {
+    req.flash("error", "Mileage rate must be a number between 0 and 100.");
+    return res.redirect("/admin/settings");
+  }
+  if (unit !== "mi" && unit !== "km") {
+    req.flash("error", "Distance unit must be mi or km.");
+    return res.redirect("/admin/settings");
+  }
+  settings.set("mileage_rate", String(rate));
+  settings.set("mileage_unit", unit);
+  req.flash("success", "Settings saved. New mileage expenses will use this rate.");
+  res.redirect("/admin/settings");
+});
 
 module.exports = router;

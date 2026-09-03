@@ -6,13 +6,19 @@ const express = require("express");
 const db = require("../lib/db");
 const queries = require("../lib/queries");
 const receipts = require("../lib/receipts");
+const settings = require("../lib/settings");
+const maps = require("../lib/maps");
 const { fileUrl, imgUrl } = require("../lib/urls");
 
 const router = express.Router();
 
+function numField(v) {
+  return Number(String(v || "").replace(/[^0-9.]/g, "")) || 0;
+}
+
 function parseExpense(body) {
   return {
-    amount: Number(String(body.amount || "").replace(/[^0-9.]/g, "")) || 0,
+    amount: numField(body.amount),
     currency: String(body.currency || "USD").toUpperCase() || "USD",
     date: String(body.date || ""),
     merchant: String(body.merchant || "").trim(),
@@ -22,7 +28,61 @@ function parseExpense(body) {
     chargeable_to: String(body.chargeable_to || "").trim(),
     report_id: body.report_id ? Number(body.report_id) : null,
     receipt_path: String(body.receipt_path || "").trim() || null,
+    // Mileage fields — repeated stop[] / stop_place_id[] inputs arrive as
+    // arrays via extended:true urlencoding (see parseStops).
+    mileage_distance: numField(body.mileage_distance),
+    mileage_unit: /^(mi|km)$/i.test(String(body.mileage_unit || "")) ? String(body.mileage_unit).toLowerCase() : "",
+    mileage_rate: numField(body.mileage_rate),
+    mileage_stops: parseStops(body),
   };
+}
+
+function parseStops(body) {
+  const names = Array.isArray(body.stop) ? body.stop : body.stop ? [body.stop] : [];
+  const placeIds = Array.isArray(body.stop_place_id)
+    ? body.stop_place_id
+    : body.stop_place_id
+      ? [body.stop_place_id]
+      : [];
+  const stops = [];
+  for (let i = 0; i < names.length && stops.length < maps.MAX_STOPS; i++) {
+    const name = String(names[i] || "").trim();
+    if (!name) continue;
+    stops.push({ name, placeId: String(placeIds[i] || "").trim() });
+  }
+  return stops.length ? JSON.stringify(stops) : "";
+}
+
+function stopsLabel(stopsJson) {
+  try {
+    return (JSON.parse(stopsJson || "[]") || [])
+      .map((s) => (s && s.name) || "")
+      .filter(Boolean)
+      .join(" → ");
+  } catch {
+    return "";
+  }
+}
+
+// Mileage bookkeeping, applied BEFORE validation: fill merchant/amount from the
+// route when blank (fill-if-blank — never override a deliberate value, e.g. a
+// trip plus a toll), and clear stale mileage data from non-mileage expenses.
+function normalizeMileage(e, mileageCfg) {
+  if (settings.isMileage(e.category)) {
+    if (!e.mileage_unit) e.mileage_unit = mileageCfg.unit;
+    if (!(e.amount > 0) && e.mileage_distance > 0) {
+      e.amount = Math.round(e.mileage_distance * e.mileage_rate * 100) / 100;
+    }
+    if (!e.merchant) {
+      const label = stopsLabel(e.mileage_stops);
+      if (label) e.merchant = label;
+    }
+  } else {
+    e.mileage_distance = null;
+    e.mileage_unit = "";
+    e.mileage_rate = null;
+    e.mileage_stops = "";
+  }
 }
 
 function validate(e) {
@@ -30,6 +90,10 @@ function validate(e) {
   if (!e.date) errors.push("Date is required.");
   if (!e.merchant) errors.push("Merchant is required.");
   if (!(e.amount >= 0)) errors.push("Amount must be a non-negative number.");
+  if (settings.isMileage(e.category)) {
+    if (!(e.mileage_distance > 0)) errors.push("Distance is required for mileage expenses.");
+    if (!e.mileage_unit) errors.push("Mileage unit must be mi or km.");
+  }
   return errors;
 }
 
@@ -65,6 +129,7 @@ router.get("/", (req, res) => {
 // --- Create -----------------------------------------------------------------
 
 router.get("/new", (req, res) => {
+  const mileageCfg = settings.mileage();
   res.render("expenses/form", {
     title: "Add expense",
     isNew: true,
@@ -85,7 +150,13 @@ router.get("/new", (req, res) => {
       chargeable_to: "",
       description: "",
       report_id: req.query.report || "",
+      mileage_distance: "",
+      mileage_unit: mileageCfg.unit,
+      mileage_rate: mileageCfg.rate,
+      mileage_stops: "[]",
     },
+    mileage: mileageCfg,
+    isMileage: settings.isMileage(req.query.category || ""),
     categories: queries.categories(),
     reports: queries.reportsAttachable(res.locals.currentUser.id),
   });
@@ -94,6 +165,7 @@ router.get("/new", (req, res) => {
 router.post("/", (req, res) => {
   const userId = res.locals.currentUser.id;
   const e = parseExpense(req.body);
+  normalizeMileage(e, settings.mileage());
   const errors = validate(e);
   if (errors.length) {
     return renderExpenseForm(res, { title: "Add expense", isNew: true, expense: e, errors });
@@ -104,9 +176,10 @@ router.post("/", (req, res) => {
   }
   const info = db.run(
     `INSERT INTO expenses
-      (user_id, report_id, amount, currency, date, merchant, description, category, payment_method, chargeable_to, receipt_path)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    userId, e.report_id, e.amount, e.currency, e.date, e.merchant, e.description, e.category, e.payment_method, e.chargeable_to, e.receipt_path
+      (user_id, report_id, amount, currency, date, merchant, description, category, payment_method, chargeable_to, receipt_path, mileage_distance, mileage_unit, mileage_rate, mileage_stops)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    userId, e.report_id, e.amount, e.currency, e.date, e.merchant, e.description, e.category, e.payment_method, e.chargeable_to, e.receipt_path,
+    e.mileage_distance, e.mileage_unit, e.mileage_rate, e.mileage_stops
   );
   req.flash("success", "Expense added.");
   res.redirect("/expenses/" + info.lastInsertRowid + "/edit");
@@ -129,6 +202,8 @@ router.get("/:id/edit", (req, res) => {
     ocrConfidence: expense.ocr_confidence,
     ocrError: null,
     expense,
+    mileage: settings.mileage(),
+    isMileage: settings.isMileage(expense.category),
     categories: queries.categories(),
     reports: queries.reportsAttachable(userId, expense.report_id),
   });
@@ -139,6 +214,7 @@ router.post("/:id", (req, res) => {
   const existing = queries.getExpense(userId, req.params.id);
   if (!existing) return res.status(404).render("error", { message: "Expense not found." });
   const e = parseExpense(req.body);
+  normalizeMileage(e, settings.mileage());
   const errors = validate(e);
   if (errors.length) {
     e.id = existing.id;
@@ -150,13 +226,21 @@ router.post("/:id", (req, res) => {
   }
   // Keep any previously attached receipt if the form didn't supply one.
   const receiptPath = e.receipt_path || existing.receipt_path || null;
+  // If the receipt was replaced (e.g. a regenerated route map), drop the old file.
+  if (existing.receipt_path && receiptPath !== existing.receipt_path) {
+    receipts.deleteFile(existing.receipt_path);
+  }
   db.run(
     `UPDATE expenses SET
        amount=?, currency=?, date=?, merchant=?, description=?, category=?,
-       payment_method=?, chargeable_to=?, report_id=?, receipt_path=?, updated_at=datetime('now')
+       payment_method=?, chargeable_to=?, report_id=?, receipt_path=?,
+       mileage_distance=?, mileage_unit=?, mileage_rate=?, mileage_stops=?,
+       updated_at=datetime('now')
      WHERE id=? AND user_id=?`,
     e.amount, e.currency, e.date, e.merchant, e.description, e.category,
-    e.payment_method, e.chargeable_to, e.report_id, receiptPath, existing.id, userId
+    e.payment_method, e.chargeable_to, e.report_id, receiptPath,
+    e.mileage_distance, e.mileage_unit, e.mileage_rate, e.mileage_stops,
+    existing.id, userId
   );
   req.flash("success", "Expense saved.");
   res.redirect("/expenses/" + existing.id + "/edit");
@@ -225,6 +309,8 @@ function renderExpenseForm(res, { title, isNew, expense, errors }) {
     ocrConfidence: expense.ocr_confidence || null,
     ocrError: null,
     expense,
+    mileage: settings.mileage(),
+    isMileage: settings.isMileage(expense.category),
     categories: queries.categories(),
     reports: queries.reportsAttachable(res.locals.currentUser.id, expense.report_id),
     errors,

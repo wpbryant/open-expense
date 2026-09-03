@@ -1,0 +1,49 @@
+<%- include('../_top', {title: 'Settings · Admin'}) %>
+  <div class="page-head">
+    <h1>Settings</h1>
+    <div class="page-actions"><a class="btn btn-ghost" href="/admin">← Admin</a></div>
+  </div>
+
+  <div class="grid grid-2">
+    <div class="card">
+      <h2 class="mt-0">Mileage</h2>
+      <form method="post" action="/admin/settings">
+        <div class="field">
+          <label for="mileage_rate">Default mileage rate</label>
+          <input id="mileage_rate" name="mileage_rate" type="number" step="0.001" min="0"
+                 value="<%= mileage.rate %>" required />
+          <p class="hint-text">Currency per <%= mileage.unit %> — e.g. the IRS business standard rate.</p>
+        </div>
+        <div class="field">
+          <label for="mileage_unit">Distance unit</label>
+          <select id="mileage_unit" name="mileage_unit">
+            <option value="mi" <%= mileage.unit === 'mi' ? 'selected' : '' %>>miles (mi)</option>
+            <option value="km" <%= mileage.unit === 'km' ? 'selected' : '' %>>kilometres (km)</option>
+          </select>
+          <p class="hint-text">Changing the rate or unit only affects <em>new</em> mileage expenses —
+          each expense stores the rate and unit it used, so old records stay accurate.</p>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-primary" type="submit">Save settings</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="card">
+      <h2 class="mt-0">Driving distance</h2>
+      <% if (mapsConfigured) { %>
+        <p><span class="badge badge-mileage">enabled</span></p>
+        <p class="hint-text">Address autocomplete, automatic driving distance (Google Routes), and a
+        route map attached as the mileage receipt are all active.</p>
+      <% } else { %>
+        <p><span class="badge">disabled</span></p>
+        <p class="hint-text">Set <code>GOOGLE_MAPS_API_KEY</code> in <code>.env</code> to enable address
+        autocomplete, automatic driving distance, and route map receipts. Enable <em>Places API (New)</em>,
+        <em>Routes API</em>, and <em>Maps Static API</em> on the Google Cloud project. Without a key,
+        mileage entry still works — users type the stops and the distance manually.</p>
+      <% } %>
+      <p class="hint-text">Mileage applies to expenses whose category is “Mileage”. Deleting that
+      category hides the route builder for new entries; existing expenses keep working.</p>
+    </div>
+  </div>
+<%- include('../_bottom') %>

@@ -57,6 +57,12 @@ CREATE TABLE IF NOT EXISTS categories (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+CREATE TABLE IF NOT EXISTS settings (
+  key        TEXT PRIMARY KEY,
+  value      TEXT NOT NULL DEFAULT '',
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE TABLE IF NOT EXISTS expenses (
   id             INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id        INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -72,6 +78,10 @@ CREATE TABLE IF NOT EXISTS expenses (
   receipt_path   TEXT,                     -- relative path under receipts dir
   ocr_confidence TEXT,                     -- 'high'|'medium'|'low'|null
   ocr_raw        TEXT,                     -- raw JSON string from OCR
+  mileage_distance REAL,                   -- driving distance in mileage_unit
+  mileage_unit     TEXT NOT NULL DEFAULT '', -- 'mi' | 'km' | '' (inherited from settings)
+  mileage_rate     REAL,                   -- rate actually used, for audit
+  mileage_stops    TEXT,                   -- JSON array [{name, placeId}]
   created_at     TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at     TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -103,6 +113,10 @@ function migrate(db) {
   ensureColumn(db, "reports", "project_name", "TEXT NOT NULL DEFAULT ''");
   ensureColumn(db, "reports", "product_in_focus", "TEXT NOT NULL DEFAULT ''");
   ensureColumn(db, "expenses", "chargeable_to", "TEXT NOT NULL DEFAULT ''");
+  ensureColumn(db, "expenses", "mileage_distance", "REAL");
+  ensureColumn(db, "expenses", "mileage_unit", "TEXT NOT NULL DEFAULT ''");
+  ensureColumn(db, "expenses", "mileage_rate", "REAL");
+  ensureColumn(db, "expenses", "mileage_stops", "TEXT");
 }
 
 // Add a column only if it doesn't already exist (idempotent ALTER TABLE).
@@ -129,6 +143,11 @@ function seed(db) {
     const ins = db.prepare("INSERT INTO categories (name) VALUES (?)");
     for (const c of DEFAULT_CATEGORIES) ins.run(c);
   }
+
+  // Org-wide settings defaults (INSERT OR IGNORE: never clobbers admin edits).
+  const setDefault = db.prepare("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)");
+  setDefault.run("mileage_rate", "0.76"); // IRS business rate, Jul–Dec 2026
+  setDefault.run("mileage_unit", "mi");
 }
 
 // --- Tiny query helpers -----------------------------------------------------

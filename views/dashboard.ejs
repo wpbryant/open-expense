@@ -5,6 +5,7 @@
       <div class="sub">Here's your spending at a glance.</div>
     </div>
     <div class="page-actions">
+      <a class="btn" href="/expenses/new?category=Mileage">🚗 Mileage</a>
       <a class="btn" href="/receipts/scan">📷 Scan receipt</a>
       <a class="btn btn-primary" href="/expenses/new">+ Add expense</a>
     </div>
@@ -43,7 +44,7 @@
             <tr>
               <td>
                 <div><a href="/expenses/<%= e.id %>/edit"><%= e.merchant || '(no merchant)' %></a></div>
-                <div class="muted" style="font-size:12px;"><%= e.date %> · <%= e.category || 'Uncategorized' %></div>
+                <div class="muted" style="font-size:12px;"><%= e.date %> · <%= e.category || 'Uncategorized' %><% if (e.mileage_distance > 0) { %> · 🚗 <%= num1(e.mileage_distance) %> <%= e.mileage_unit || 'mi' %><% } %></div>
               </td>
               <td class="num"><%= money(e.amount, e.currency) %></td>
             </tr>

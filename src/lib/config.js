@@ -29,6 +29,10 @@ const config = {
   geminiModel: process.env.GEMINI_MODEL || "gemini-2.5-flash",
   ocrEnabled: Boolean(process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.trim()),
 
+  // Google Maps Platform (mileage autocomplete + driving distance + static map
+  // receipts). Needs Places API (New), Routes API, and Maps Static API enabled.
+  googleMapsApiKey: (process.env.GOOGLE_MAPS_API_KEY || "").trim(),
+
   // Storage paths (resolved relative to project root)
   dbPath: path.resolve(PROJECT_ROOT, process.env.DB_PATH || "data/app.db"),
   receiptsDir: path.resolve(PROJECT_ROOT, process.env.RECEIPTS_DIR || "data/receipts"),

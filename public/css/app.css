@@ -371,3 +371,44 @@ ul.clean { list-style: none; padding: 0; margin: 0; }
   border-radius: var(--radius);
   background: #fbfcfe;
 }
+
+/* Mileage route builder (expense form) */
+.mileage-box {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 12px 14px 14px;
+  margin: 4px 0 14px;
+  background: #fbfcfe;
+}
+.mileage-box legend {
+  font-size: 13px;
+  font-weight: 600;
+  padding: 0 6px;
+  color: var(--text);
+}
+.stop-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 48px 1fr 34px;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.stop-tag { font-size: 12px; color: var(--muted); }
+.ac-list {
+  position: absolute;
+  top: 100%;
+  left: 56px;
+  right: 34px;
+  z-index: 30;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(16, 24, 40, 0.12);
+  max-height: 240px;
+  overflow: auto;
+}
+.ac-item { padding: 8px 10px; cursor: pointer; font-size: 14px; }
+.ac-item small { display: block; color: var(--muted); font-size: 12px; }
+.ac-item:hover { background: #f1f5f9; }
+.badge-mileage { background: #ecfdf5; color: #047857; }

@@ -21,4 +21,9 @@ function num(amount) {
   return (Number(amount) || 0).toFixed(2);
 }
 
-module.exports = { money, num };
+// One decimal, for distances (e.g. "41.1").
+function num1(amount) {
+  return (Number(amount) || 0).toFixed(1);
+}
+
+module.exports = { money, num, num1 };

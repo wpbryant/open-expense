@@ -11,9 +11,10 @@ const session = require("express-session");
 const config = require("./lib/config");
 const db = require("./lib/db"); // imported for side-effects (schema/seed)
 const ocr = require("./lib/ocr");
+const maps = require("./lib/maps");
 const { loadUser, requireAuth, requireAdmin } = require("./middleware/auth");
 const flash = require("./middleware/flash");
-const { money } = require("./lib/format");
+const { money, num1 } = require("./lib/format");
 
 // True if a system executable is on PATH (used to warn about the optional
 // poppler/pdftoppm dependency at startup).
@@ -56,6 +57,7 @@ app.use(express.static(path.join(__dirname, "..", "public")));
 
 // view locals
 app.locals.money = money;
+app.locals.num1 = num1;
 app.locals.appName = "OpenExpense";
 app.locals.ocrEnabled = ocr.isEnabled();
 app.locals.assetVersion = require("../package.json").version; // cache-bust static assets
@@ -74,6 +76,7 @@ app.use("/", require("./routes/receipts")); // protects itself
 app.use("/", require("./routes/dashboard")); // protects itself
 app.use("/expenses", requireAuth, require("./routes/expenses"));
 app.use("/reports", requireAuth, require("./routes/reports"));
+app.use("/api", requireAuth, require("./routes/api"));
 app.use("/admin", requireAuth, requireAdmin, require("./routes/admin"));
 
 // --- Errors -----------------------------------------------------------------
@@ -100,6 +103,12 @@ if (require.main === module) {
     console.log(`OpenExpense running at ${addr}`);
     if (!ocr.isEnabled()) {
       console.log("  [OCR disabled] Set GEMINI_API_KEY to enable receipt scanning.");
+    }
+    if (!maps.isConfigured()) {
+      console.log(
+        "  [Mileage distance disabled] Set GOOGLE_MAPS_API_KEY to enable address" +
+          " autocomplete, driving distance, and route map receipts."
+      );
     }
     if (!hasBin("pdftoppm")) {
       console.log(

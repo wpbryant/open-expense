@@ -7,7 +7,7 @@
 const PDFDocument = require("pdfkit");
 const db = require("./db");
 const receipts = require("./receipts");
-const { money } = require("./format");
+const { money, num1 } = require("./format");
 
 const PAGE = { size: "LETTER", margin: 50 };
 const ACCENT = "#2563eb";
@@ -152,6 +152,32 @@ function expenseDateToken(iso) {
   return String(Number(m[3])) + MONTHS[Number(m[2]) - 1] + m[1];
 }
 
+// Standard PDF fonts are WinAnsi-only, and route labels use "→" ("A → B") —
+// map it to something encodable.
+function pdfText(v) {
+  return String(v == null ? "" : v).replace(/→/g, "->");
+}
+
+// "42.3 mi @ $0.76/mi" for mileage expenses; "" otherwise (skipped by the
+// combined description join).
+function mileageToken(e) {
+  if (!(Number(e.mileage_distance) > 0)) return "";
+  const unit = e.mileage_unit || "mi";
+  return `${num1(e.mileage_distance)} ${unit} @ ${money(e.mileage_rate, e.currency)}/${unit}`;
+}
+
+// The stored route as a readable label: "Home -> Office -> Airport".
+function routeLabel(e) {
+  try {
+    return (JSON.parse(e.mileage_stops || "[]") || [])
+      .map((s) => (s && s.name) || "")
+      .filter(Boolean)
+      .join(" → ");
+  } catch {
+    return "";
+  }
+}
+
 // Combined narrative for the summary table's "Description" column, in the
 // requested order. Blank components are skipped and the rest joined with ", ".
 // `ownerName`, `report.purpose/project_name/product_in_focus` are constant per
@@ -160,6 +186,7 @@ function combinedDescription(e, report, ownerName) {
   const parts = [
     ownerName,
     e.category,
+    mileageToken(e),
     report.purpose,
     report.project_name,
     expenseDateToken(e.date),
@@ -167,10 +194,12 @@ function combinedDescription(e, report, ownerName) {
     e.chargeable_to ? "Chargeable To " + e.chargeable_to : "",
     e.description,
   ];
-  return parts
-    .map((p) => (p == null ? "" : String(p).trim()))
-    .filter((p) => p !== "")
-    .join(", ");
+  return pdfText(
+    parts
+      .map((p) => (p == null ? "" : String(p).trim()))
+      .filter((p) => p !== "")
+      .join(", ")
+  );
 }
 
 function drawSummaryTable(doc, expenses, currency, report, ownerName) {
@@ -193,7 +222,7 @@ function drawSummaryTable(doc, expenses, currency, report, ownerName) {
   const cellText = (e, c) => {
     if (c.key === "amount") return money(e.amount, currency);
     if (c.key === "description") return combinedDescription(e, report, ownerName);
-    return String(e[c.key] == null ? "" : e[c.key]);
+    return pdfText(e[c.key]);
   };
 
   // header row
@@ -259,11 +288,18 @@ function drawExpensePage(doc, e) {
     .fillColor(ACCENT)
     .font("Helvetica-Bold")
     .fontSize(14)
-    .text(`${e.merchant || "Expense"} — ${money(e.amount, e.currency)}`);
+    .text(pdfText(`${e.merchant || "Expense"} — ${money(e.amount, e.currency)}`));
   doc.moveDown(0.3);
   doc.font("Helvetica").fontSize(10).fillColor("#333");
   kv(doc, "Date", e.date);
   kv(doc, "Category", e.category);
+  // Mileage claims usually carry the route map as their receipt, so put the
+  // substantiating numbers right next to it.
+  if (Number(e.mileage_distance) > 0) {
+    kv(doc, "Distance", mileageToken(e));
+    const route = routeLabel(e);
+    if (route) kv(doc, "Route", route);
+  }
   kv(doc, "Payment method", e.payment_method || "—");
   kv(doc, "Description", e.description || "—");
   doc.moveDown(0.4);
@@ -287,7 +323,7 @@ function drawExpensePage(doc, e) {
 
 function kv(doc, label, value) {
   doc.font("Helvetica-Bold").fillColor("#666").text(label + ": ", { continued: true });
-  doc.font("Helvetica").fillColor("#222").text(String(value));
+  doc.font("Helvetica").fillColor("#222").text(pdfText(value));
 }
 
 module.exports = { generateReportPdf };

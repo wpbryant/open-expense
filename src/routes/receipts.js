@@ -12,6 +12,7 @@ const db = require("../lib/db");
 const { requireAuth } = require("../middleware/auth");
 const receipts = require("../lib/receipts");
 const ocr = require("../lib/ocr");
+const settings = require("../lib/settings");
 const queries = require("../lib/queries");
 const { fileUrl, imgUrl } = require("../lib/urls");
 
@@ -87,6 +88,8 @@ router.post("/receipts/scan", upload.single("receipt"), async (req, res, next) =
       ocrConfidence: fields ? fields.confidence : null,
       ocrError,
       expense,
+      mileage: settings.mileage(),
+      isMileage: settings.isMileage(expense.category),
       categories: queries.categories(),
       reports: queries.reportsAttachable(userId),
     });

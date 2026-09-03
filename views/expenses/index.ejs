@@ -5,6 +5,7 @@
       <div class="sub"><%= expenses.length %> shown · total <%= money(total) %></div>
     </div>
     <div class="page-actions">
+      <a class="btn" href="/expenses/new?category=Mileage">🚗 Mileage</a>
       <a class="btn" href="/receipts/scan">📷 Scan receipt</a>
       <a class="btn btn-primary" href="/expenses/new">+ Add expense</a>
     </div>
@@ -65,6 +66,9 @@
             </td>
             <td><%= e.date %></td>
             <td><a href="/expenses/<%= e.id %>/edit"><%= e.merchant || '(none)' %></a>
+              <% if (e.mileage_distance > 0) { %>
+                <span class="badge badge-mileage">🚗 <%= num1(e.mileage_distance) %> <%= e.mileage_unit || 'mi' %></span>
+              <% } %>
               <% if (e.description) { %><div class="muted" style="font-size:12px;"><%= e.description %></div><% } %>
             </td>
             <td><span class="badge"><%= e.category || 'Uncategorized' %></span></td>

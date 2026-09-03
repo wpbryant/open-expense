@@ -2,6 +2,16 @@
   <%
     var backHref = expense.report_id ? '/reports/' + expense.report_id : '/expenses';
     var backLabel = expense.report_id ? '← Back to report' : '← Back to expenses';
+    // Mileage route state — stops round-trip as JSON; always render at least a
+    // From/To pair so the form posts sensibly with JS disabled.
+    var mileageStops = [];
+    try { mileageStops = JSON.parse(expense.mileage_stops || '[]') || []; } catch (err) { mileageStops = []; }
+    while (mileageStops.length < 2) mileageStops.push({ name: '', placeId: '' });
+    var mileageUnit = expense.mileage_unit || mileage.unit;
+    var mileageRate = (expense.mileage_rate !== null && expense.mileage_rate !== undefined && expense.mileage_rate !== '')
+      ? expense.mileage_rate : mileage.rate;
+    var stopLabel = function (i, n) { return i === 0 ? 'From' : (i === n - 1 ? 'To' : 'Via ' + i); };
+    var stopPlaceholder = function (i, n) { return i === 0 ? 'Start address' : (i === n - 1 ? 'End address' : 'Stop address'); };
   %>
   <div class="page-head">
     <h1><%= title %></h1>
@@ -86,6 +96,50 @@
             <input id="date" name="date" type="date" value="<%= expense.date %>" required />
           </div>
         </div>
+
+        <%#Mileage route builder — revealed by JS when the category is Mileage %>
+        <fieldset class="mileage-box" id="mileage-box"<%- isMileage ? '' : ' hidden' %>
+                  data-rate="<%= mileageRate %>" data-unit="<%= mileageUnit %>"
+                  data-auto="<%= mileage.autoDistance ? '1' : '0' %>">
+          <legend>Route</legend>
+          <p class="hint-text" style="margin:0 0 10px;">Where did you drive? The first stop is the start, the last is the end.</p>
+          <div id="stop-list">
+            <% mileageStops.forEach(function (s, i) { %>
+              <div class="stop-row">
+                <span class="stop-tag"><%= stopLabel(i, mileageStops.length) %></span>
+                <input class="stop-input" name="stop[]" type="text" autocomplete="off"
+                       placeholder="<%= stopPlaceholder(i, mileageStops.length) %>"
+                       value="<%= s.name || '' %>" />
+                <input type="hidden" class="stop-place-id" name="stop_place_id[]" value="<%= s.placeId || '' %>" />
+                <button type="button" class="btn btn-ghost btn-sm stop-remove" title="Remove stop"<%- mileageStops.length > 2 ? '' : ' hidden' %>>✕</button>
+                <div class="ac-list" hidden></div>
+              </div>
+            <% }); %>
+          </div>
+          <button type="button" class="btn btn-ghost btn-sm" id="stop-add">+ Add stop</button>
+          <div class="row-3" style="margin-top:10px;">
+            <div class="field">
+              <label for="mileage_distance">Distance (<%= mileageUnit %>)</label>
+              <input id="mileage_distance" name="mileage_distance" type="number" step="0.1" min="0"
+                     value="<%= expense.mileage_distance || '' %>" />
+            </div>
+            <div class="field">
+              <label for="mileage_rate">Rate per <%= mileageUnit %></label>
+              <input id="mileage_rate" name="mileage_rate" type="number" step="0.001" min="0"
+                     value="<%= mileageRate %>" />
+            </div>
+            <div class="field">
+              <label>&nbsp;</label>
+              <button type="button" class="btn btn-primary btn-sm" id="mileage-calc"<%- mileage.autoDistance ? '' : ' hidden' %>>⚡ Calculate distance</button>
+            </div>
+          </div>
+          <input type="hidden" name="mileage_unit" value="<%= mileageUnit %>" />
+          <p class="hint-text" id="mileage-stale" hidden style="margin:6px 0 0;">Route changed — calculate the distance again.</p>
+          <p class="hint-text" id="mileage-error" hidden style="color:var(--red);margin:6px 0 0;"></p>
+          <% if (!mileage.autoDistance) { %>
+            <p class="hint-text" style="margin:6px 0 0;">Tip: set <code>GOOGLE_MAPS_API_KEY</code> to get address autocomplete, automatic driving distance, and a route map receipt.</p>
+          <% } %>
+        </fieldset>
 
         <div class="row-3">
           <div class="field">

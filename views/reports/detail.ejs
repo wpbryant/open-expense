@@ -42,7 +42,11 @@
                 </a>
               <% } %></td>
               <td><%= e.date %></td>
-              <td><a href="/expenses/<%= e.id %>/edit"><%= e.merchant %></a></td>
+              <td><a href="/expenses/<%= e.id %>/edit"><%= e.merchant %></a>
+                <% if (e.mileage_distance > 0) { %>
+                  <span class="badge badge-mileage">🚗 <%= num1(e.mileage_distance) %> <%= e.mileage_unit || 'mi' %></span>
+                <% } %>
+              </td>
               <td class="muted"><%= e.category || '—' %></td>
               <td class="muted"><%= e.chargeable_to || '—' %></td>
               <td class="num"><%= money(e.amount, e.currency) %></td>
@@ -72,6 +76,7 @@
         <div class="page-actions" style="margin-top:4px;">
           <a class="btn btn-primary" href="/expenses/new?report=<%= report.id %>">+ Add expense</a>
           <a class="btn" href="/receipts/scan?report=<%= report.id %>">📷 Scan receipt</a>
+          <a class="btn" href="/expenses/new?report=<%= report.id %>&category=Mileage">🚗 Mileage</a>
         </div>
       </div>
 

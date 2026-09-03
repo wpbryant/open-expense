@@ -5,6 +5,8 @@ but local-first and tiny. Upload a receipt, let **Gemini** read it into an expen
 group expenses into reports, and **export to PDF** (with the receipts embedded).
 
 - 📷 Scan a receipt (image **or PDF**) → OCR pre-fills the expense form for review
+- 🚗 **Mileage expenses** — build a route from addresses, get the driving distance
+  (Google), and attach a **route map** as the receipt; works fully manual without a key
 - ✂️ Crop receipt images right on the expense page — the server cuts them with `sharp` (image receipts; PDFs excluded)
 - ✍️ Add / edit expenses manually; filter, search, attach to reports
 - 📁 Group expenses into reports, set status (draft → submitted → approved)
@@ -61,6 +63,7 @@ All values are optional except `GEMINI_API_KEY` for receipt OCR. See
 | `SEED_ADMIN_USERNAME` / `SEED_ADMIN_PASSWORD` | Admin seeded on first run |
 | `GEMINI_API_KEY` | Enables receipt OCR (Gemini). Without it, uploads still attach but fields aren't auto-filled. |
 | `GEMINI_MODEL` | Vision model (default `gemini-2.5-flash`) |
+| `GOOGLE_MAPS_API_KEY` | Enables mileage address autocomplete + driving distance + route map receipts (Google). Enable **Places API (New)**, **Routes API**, and **Maps Static API** on the project. The key stays server-side. Without it, mileage entry is manual (typed stops + distance). |
 | `APP_BASE_URL` | Public URL used to build password-reset links |
 | `SMTP_HOST` / `SMTP_PORT` / `SMTP_SECURE` / `SMTP_USER` / `SMTP_PASS` / `SMTP_FROM` | Email for password-reset links; if unset, links are shown to the admin to copy |
 | `DB_PATH` / `RECEIPTS_DIR` | Where the SQLite db + receipt images live (default `data/…`) |
@@ -78,6 +81,63 @@ compact JPEG. PDF receipts are rasterized to PNG for previews and report
 embedding via `pdftoppm` (poppler) — see [Prerequisites](#prerequisites); PDFs
 still OCR and download without it.
 
+### Mileage expenses
+
+Pick the **Mileage** category (or the `🚗 Mileage` shortcut) and a route builder
+appears in the expense form: add stops with address autocomplete, hit
+**Calculate distance**, and the app fills the distance and computes
+`amount = distance × rate`. It also renders the route as a map image and
+attaches it as the receipt, so mileage claims get their own page — map, route,
+distance, and rate — in the exported report PDF.
+
+The default rate and distance unit (mi/km) are set per-install at
+**Admin → Settings**; each expense stores the rate it used, so changing the
+rate later never rewrites history.
+
+With `GOOGLE_MAPS_API_KEY` unset, the route builder still works in manual
+mode: type the stops and the distance, and the amount is computed the same
+way — you just don't get autocomplete, the calculated distance, or the map.
+
+#### Getting a Google Maps API key
+
+The key is only ever used **server-side** — it is never sent to the browser.
+
+1. **Create (or pick) a Google Cloud project** at
+   <https://console.cloud.google.com/> — one project can serve this app alone.
+2. **Enable billing** on the project (*Billing → Link a billing account*).
+   Required even for the free tier — a credit/debit card is needed, but
+   personal-scale use stays within the free monthly allotment and is not
+   charged. Each of the three APIs below has roughly 10,000 free
+   requests/month; one mileage expense uses ~3 requests.
+3. **Enable the three APIs** the app uses (*APIs & Services → Library*, or
+   these direct links — click **Enable** on each):
+   - [Places API (New)](https://console.cloud.google.com/apis/library/places.googleapis.com) — address autocomplete
+   - [Routes API](https://console.cloud.google.com/apis/library/routes.googleapis.com) — driving distance + route map
+   - [Maps Static API](https://console.cloud.google.com/apis/library/static-maps.googleapis.com) — the map "receipt" image
+4. **Create a key**: *APIs & Services → Credentials → Create credentials →
+   API key*. Copy it into `.env`:
+   ```
+   GOOGLE_MAPS_API_KEY=AIza…your_key_here
+   ```
+   then restart the app (the startup banner confirms: no
+   `[Mileage distance disabled]` line means it's live).
+5. **Restrict the key** (recommended, on the same Credentials page):
+   *API restrictions* → *Restrict key* → tick only the three APIs above, so a
+   leaked key can't be used for other Google services. *Application
+   restrictions* → **IP address** if the server has a static IP; otherwise
+   leave as *None* (the API restrictions still apply).
+
+Verify it works:
+
+```bash
+GOOGLE_MAPS_API_KEY=… node bin/mileage-distance.js "Home" "Office"
+```
+
+which should print JSON with a `distance`. Common setup errors surface as
+readable messages in the app's route builder: `REQUEST_DENIED` / "API not
+enabled" means one of the three APIs (or billing) isn't set up on that
+project.
+
 ### User accounts & password resets
 
 Admins create users with a first/last name, email, username, and password
@@ -92,6 +152,7 @@ hashed in the DB, expire after 24h, and are single-use.
 - **Dashboard** — unsubmitted/unfiled totals, recent expenses, category breakdown.
 - **Scan** — upload a receipt; Gemini pre-fills the fields for you to review.
 - **Expenses** — list, filter, add manually, edit, delete, crop receipts, attach to a report.
+- **Mileage** — `🚗 Mileage` → route builder → driving distance + map receipt.
 - **Reports** — create, attach expenses (Add / Scan buttons), set status, **Download PDF**.
 - **Admin** — manage users and categories (admins only).
 
@@ -103,6 +164,7 @@ filesystem / stdout — usable from the shell or the web layer:
 | Tool | Does one thing |
 |------|----------------|
 | `bin/ocr-receipt.js <file>` | receipt (image/PDF) → expense JSON on stdout (Gemini) |
+| `bin/mileage-distance.js "A" "B" [--unit km]` | route stops → driving distance JSON (Google) |
 | `bin/make-report-pdf.js <id> [--out f]` | report → PDF file |
 | `bin/create-user.js <name> [--password p] [--admin]` | create / reset a login |
 | `bin/generate-icons.js` | render PWA icons |
@@ -111,6 +173,7 @@ Examples:
 
 ```bash
 GEMINI_API_KEY=… node bin/ocr-receipt.js ./receipt.pdf | jq .merchant
+GOOGLE_MAPS_API_KEY=… node bin/mileage-distance.js "Home" "Office" | jq .distance
 node bin/create-user.js alice --admin          # prompts for password
 node bin/make-report-pdf.js 3 --out q3.pdf
 ```
@@ -122,8 +185,8 @@ Storage is one SQLite file plus receipt images on disk — everything is a file.
 
 ```
 bin/            standalone CLI tools (usable outside the web app)
-src/lib/        config, db, queries, ocr, pdf, receipts, urls, auth, passwords,
-                mail, categories, format
+src/lib/        config, db, queries, settings, maps, ocr, pdf, receipts, urls,
+                auth, passwords, mail, categories, format
 src/middleware/ auth guards (requireAuth / requireAdmin), flash messages
 src/routes/     auth, dashboard, expenses, receipts, reports, admin
 views/          EJS templates (server-rendered)

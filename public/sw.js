@@ -4,7 +4,7 @@
 // ?v=<version> query (see views), so a code change ships a new URL and is
 // fetched fresh immediately; bumping CACHE below purges any stale copies.
 
-const CACHE = "openexpense-v2";
+const CACHE = "openexpense-v3";
 const SHELL = [
   "/",
   "/login",

@@ -1,6 +1,6 @@
 {
   "name": "open-expense",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "description": "A small, composable expense tracking PWA — upload receipts, OCR them with Gemini, build reports, export to PDF.",
   "type": "commonjs",
   "main": "src/server.js",
@@ -8,7 +8,8 @@
     "ocr-receipt": "bin/ocr-receipt.js",
     "make-report-pdf": "bin/make-report-pdf.js",
     "create-user": "bin/create-user.js",
-    "generate-icons": "bin/generate-icons.js"
+    "generate-icons": "bin/generate-icons.js",
+    "mileage-distance": "bin/mileage-distance.js"
   },
   "scripts": {
     "start": "node src/server.js",
@@ -16,13 +17,15 @@
     "ocr": "node bin/ocr-receipt.js",
     "pdf": "node bin/make-report-pdf.js",
     "create-user": "node bin/create-user.js",
-    "icons": "node bin/generate-icons.js"
+    "icons": "node bin/generate-icons.js",
+    "mileage": "node bin/mileage-distance.js"
   },
   "keywords": [
     "expense",
     "receipt",
     "ocr",
     "gemini",
+    "mileage",
     "pwa",
     "pdf"
   ],
@@ -39,5 +42,10 @@
     "nodemailer": "^6.10.1",
     "pdfkit": "^0.15.0",
     "sharp": "^0.33.5"
+  },
+  "allowScripts": {
+    "bcrypt@5.1.1": true,
+    "better-sqlite3@11.10.0": true,
+    "sharp@0.33.5": true
   }
 }
