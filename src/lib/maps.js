@@ -16,12 +16,11 @@ const AUTOCOMPLETE_URL = "https://places.googleapis.com/v1/places:autocomplete";
 const ROUTES_URL = "https://routes.googleapis.com/directions/v2:computeRoutes";
 const STATIC_MAP_URL = "https://maps.googleapis.com/maps/api/staticmap";
 
-// Google's Static Maps URLs are capped at 2048 chars — long encoded polylines
-// can hit it, so the map degrades to fewer layers rather than failing.
-const STATIC_MAP_MAX_URL = 2048;
+// Static Maps allows URLs up to 16384 chars; leave headroom. Longer routes
+// decimate their shape rather than losing it.
+const STATIC_MAP_MAX_URL = 16000;
 
 const MAX_STOPS = 10;
-const MARKER_LABELS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
 function isConfigured() {
   return Boolean(config.googleMapsApiKey);
@@ -156,55 +155,87 @@ function encodePolyline(coords) {
   return out;
 }
 
-// Render the route as a portrait PNG for use as the mileage receipt: the route
-// line plus labeled stop markers (A, B, C…). If the URL budget runs out, retry
-// with fewer layers (path only → markers only) instead of failing.
-async function routeMapImage(stops, coords) {
-  const safeStops = (Array.isArray(stops) ? stops : []).slice(0, MAX_STOPS);
-  const encoded = encodePolyline(coords);
-  const pathParam = encoded
-    ? "path=" + encodeURIComponent(`weight:5|color:0x2563eb|enc:${encoded}`)
-    : "";
-  const markerParams = safeStops.map((s, i) => {
-    const label = MARKER_LABELS[i] || "";
-    const loc = s.placeId
-      ? `place_id:${s.placeId}`
-      : String(s.name || "").trim();
-    const marker = (label ? `label:${label}|` : "") + loc;
-    return "markers=" + encodeURIComponent(marker);
-  });
-  const keyParam = "key=" + encodeURIComponent(config.googleMapsApiKey);
+// Center + zoom that fit the route's bounding box in a `width` x `height`
+// viewport (Mercator math — same projection Static Maps tiles use). We compute
+// these explicitly rather than relying on implicit positioning, so the frame
+// is correct even if a path or marker ever gets dropped.
+function viewForCoords(coords, width, height) {
+  const pts = (coords || [])
+    .map(([lng, lat]) => [Number(lng), Number(lat)])
+    .filter(([lng, lat]) => Number.isFinite(lng) && Number.isFinite(lat));
+  if (pts.length < 2) return null;
 
-  // Layers we're willing to drop, most complete first.
-  const layers = [
-    [pathParam, ...markerParams].filter(Boolean),
-    [pathParam].filter(Boolean),
-    markerParams,
+  const lats = pts.map((p) => p[1]);
+  const lngs = pts.map((p) => p[0]);
+  const pad = 0.25; // breathing room around the route, proportionally
+  const minLat = Math.min(...lats);
+  const maxLat = Math.max(...lats);
+  const minLng = Math.min(...lngs);
+  const maxLng = Math.max(...lngs);
+  const padLat = (maxLat - minLat) * pad || 0.01;
+  const padLng = (maxLng - minLng) * pad || 0.01;
+
+  const merc = (lat) => Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360));
+  const spanLng = (maxLng - minLng) + padLng * 2;
+  const spanMercY = merc(maxLat + padLat) - merc(minLat - padLat);
+
+  const zoomX = Math.log2((360 * width) / (256 * spanLng));
+  const zoomY = Math.log2((2 * Math.PI * height) / (256 * Math.max(spanMercY, 1e-9)));
+  const zoom = Math.max(1, Math.min(20, Math.floor(Math.min(zoomX, zoomY))));
+  return {
+    center: `${((minLat + maxLat) / 2).toFixed(6)},${((minLng + maxLng) / 2).toFixed(6)}`,
+    zoom,
+  };
+}
+
+// Render the route as a portrait PNG for use as the mileage receipt: the route
+// line plus labeled start/end markers. Every element uses documented formats
+// only (classic-encoded path, lat/lng markers, explicit center/zoom) —
+// Static Maps silently drops undocumented ones, which used to leave the
+// default world view.
+async function routeMapImage(stops, coords) {
+  const pts = (coords || [])
+    .map(([lng, lat]) => [Number(lng), Number(lat)])
+    .filter(([lng, lat]) => Number.isFinite(lng) && Number.isFinite(lat));
+
+  const view = viewForCoords(pts, 640, 800);
+  if (!view) return null; // no usable shape — caller keeps the distance, skips the map
+
+  // Start/end pins from the shape itself (documented lat/lng marker format).
+  const markerParams = [
+    "markers=" + encodeURIComponent(`label:A|color:0x2563eb|${pts[0][1]},${pts[0][0]}`),
+    "markers=" + encodeURIComponent(`label:B|color:0x2563eb|${pts[pts.length - 1][1]},${pts[pts.length - 1][0]}`),
   ];
 
-  let lastError = null;
-  for (const parts of layers) {
-    if (!parts.length) continue;
-    const url = `${STATIC_MAP_URL}?size=640x800&scale=2&maptype=roadmap&${parts.concat(keyParam).join("&")}`;
-    if (url.length > STATIC_MAP_MAX_URL) continue;
-    let res;
-    try {
-      res = await fetch(url, { signal: AbortSignal.timeout(8000) });
-    } catch (e) {
-      const timedOut = e && (e.name === "TimeoutError" || e.name === "AbortError");
-      lastError = new Error("Could not reach Google Maps" + (timedOut ? " (timed out)." : "."));
-      continue;
-    }
-    if (!res.ok) {
-      const j = await res.json().catch(() => null);
-      lastError = new Error((j && j.error && j.error.message) || `Map render failed (${res.status}).`);
-      continue;
-    }
-    const buf = Buffer.from(await res.arrayBuffer());
-    if (buf.length) return buf;
-    lastError = new Error("Google returned an empty map image.");
+  // Encode the shape; if the URL budget is somehow still exceeded, decimate
+  // the point list rather than losing the route.
+  let work = pts;
+  let url = "";
+  for (;;) {
+    const pathParam =
+      "path=" + encodeURIComponent(`weight:5|color:0x2563eb|enc:${encodePolyline(work)}`);
+    url =
+      `${STATIC_MAP_URL}?size=640x800&scale=2&maptype=roadmap` +
+      `&center=${view.center}&zoom=${view.zoom}&${[pathParam, ...markerParams].join("&")}` +
+      `&key=${encodeURIComponent(config.googleMapsApiKey)}`;
+    if (url.length <= STATIC_MAP_MAX_URL || work.length <= 2) break;
+    work = work.filter((_, i) => i % 2 === 0 || i === work.length - 1);
   }
-  throw lastError || new Error("Could not render the route map.");
+
+  let res;
+  try {
+    res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+  } catch (e) {
+    const timedOut = e && (e.name === "TimeoutError" || e.name === "AbortError");
+    throw new Error("Could not reach Google Maps" + (timedOut ? " (timed out)." : "."));
+  }
+  if (!res.ok) {
+    const j = await res.json().catch(() => null);
+    throw new Error((j && j.error && j.error.message) || `Map render failed (${res.status}).`);
+  }
+  const buf = Buffer.from(await res.arrayBuffer());
+  if (!buf.length) throw new Error("Google returned an empty map image.");
+  return buf;
 }
 
 module.exports = {

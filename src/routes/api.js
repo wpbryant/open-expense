@@ -56,8 +56,10 @@ router.post("/mileage/distance", async (req, res) => {
     let map = null;
     try {
       const png = await maps.routeMapImage(stops, coords);
-      const rel = await receipts.save(png, "route-map.png", "image/png", res.locals.currentUser.id);
-      map = { path: rel, previewUrl: imgUrl(rel), downloadUrl: fileUrl(rel), isPdf: false };
+      if (png) {
+        const rel = await receipts.save(png, "route-map.png", "image/png", res.locals.currentUser.id);
+        map = { path: rel, previewUrl: imgUrl(rel), downloadUrl: fileUrl(rel), isPdf: false };
+      }
     } catch (e) {
       map = { error: e.message || "Could not render the route map." };
     }
