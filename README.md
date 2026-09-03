@@ -138,6 +138,12 @@ readable messages in the app's route builder: `REQUEST_DENIED` / "API not
 enabled" means one of the three APIs (or billing) isn't set up on that
 project.
 
+> **Gotcha:** Google lists **Places API** (legacy) and **Places API (New)** as
+> two separate APIs. If distance and the map work but address autocomplete
+> fails, the key's API restrictions (or the enabled-APIs list) almost
+> certainly have the legacy one ticked instead of **Places API (New)** —
+> tick both, or only (New).
+
 ### User accounts & password resets
 
 Admins create users with a first/last name, email, username, and password

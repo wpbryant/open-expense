@@ -47,7 +47,7 @@ router.post("/mileage/distance", async (req, res) => {
     }
     const unit = body.unit === "km" || body.unit === "mi" ? body.unit : settings.mileage().unit;
 
-    const { meters, polyline } = await maps.routeDistance(stops);
+    const { meters, coords } = await maps.routeDistance(stops);
 
     // Render the route map and stage it as a receipt exactly like
     // POST /receipts/upload stages an upload: the form's hidden receipt_path
@@ -55,7 +55,7 @@ router.post("/mileage/distance", async (req, res) => {
     // a render failure never costs the distance.
     let map = null;
     try {
-      const png = await maps.routeMapImage(stops, polyline);
+      const png = await maps.routeMapImage(stops, coords);
       const rel = await receipts.save(png, "route-map.png", "image/png", res.locals.currentUser.id);
       map = { path: rel, previewUrl: imgUrl(rel), downloadUrl: fileUrl(rel), isPdf: false };
     } catch (e) {

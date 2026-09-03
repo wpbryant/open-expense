@@ -88,7 +88,8 @@ async function autocomplete(input, sessionToken) {
 }
 
 // Route a list of {name, placeId} stops (placeId optional — free text falls
-// back to an address waypoint). Returns {meters, polyline}.
+// back to an address waypoint). Returns {meters, coords} where coords is the
+// route shape as GeoJSON [lng, lat] pairs.
 async function routeDistance(stops) {
   const list = (Array.isArray(stops) ? stops : [])
     .map((s) => ({ name: String((s && s.name) || "").trim(), placeId: stripResourceName(s && s.placeId) }))
@@ -98,10 +99,15 @@ async function routeDistance(stops) {
 
   // Waypoints sit directly on origin/destination/intermediates — Routes v2 has
   // no nested "waypoint" key. TRAFFIC_UNAWARE keeps distances deterministic.
+  // We ask for the shape as GeoJSON (plain coordinates) rather than Routes'
+  // encodedPolyline: Routes v2 uses its own polyline encoding variant, which
+  // Static Maps' "enc:" parameter can't read (the map zooms out to the globe
+  // because the decoded bounds are nonsense). Classic-encoding it ourselves
+  // (see encodePolyline) keeps the two APIs' formats separate.
   const waypoint = (s) => (s.placeId ? { placeId: s.placeId } : { address: s.name });
   const data = await googlePost(
     ROUTES_URL,
-    "routes.distanceMeters,routes.polyline.encodedPolyline",
+    "routes.distanceMeters,routes.polyline.geoJsonLinestring",
     {
       origin: waypoint(list[0]),
       destination: waypoint(list[list.length - 1]),
@@ -115,16 +121,49 @@ async function routeDistance(stops) {
   if (!route || typeof route.distanceMeters !== "number") {
     throw new Error("No driving route found between those stops.");
   }
-  return { meters: route.distanceMeters, polyline: (route.polyline && route.polyline.encodedPolyline) || "" };
+  const coords = (route.polyline && route.polyline.geoJsonLinestring && route.polyline.geoJsonLinestring.coordinates) || [];
+  return { meters: route.distanceMeters, coords };
+}
+
+// Classic Encoded Polyline Algorithm Format — the variant Static Maps' "enc:"
+// parameter expects (https://developers.google.com/maps/documentation/utilities/polylinealgorithm).
+// Input is GeoJSON order ([lng, lat]); rounds to 1e-5 degrees like Google does.
+function encodePolyline(coords) {
+  let lastLat = 0;
+  let lastLng = 0;
+  let out = "";
+  const encodeValue = (v) => {
+    v = v < 0 ? ~(v << 1) : v << 1; // left-shift then sign-fold (zigzag)
+    let s = "";
+    do {
+      let chunk = v & 31;
+      v >>>= 5;
+      if (v) chunk |= 32;
+      s += String.fromCharCode(chunk + 63);
+    } while (v);
+    return s;
+  };
+  for (const point of coords || []) {
+    const lng = Number(point && point[0]);
+    const lat = Number(point && point[1]);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+    const ilat = Math.round(lat * 1e5);
+    const ilng = Math.round(lng * 1e5);
+    out += encodeValue(ilat - lastLat) + encodeValue(ilng - lastLng);
+    lastLat = ilat;
+    lastLng = ilng;
+  }
+  return out;
 }
 
 // Render the route as a portrait PNG for use as the mileage receipt: the route
-// polyline plus labeled stop markers (A, B, C…). If the URL budget runs out,
-// retry with fewer layers (path only → markers only) instead of failing.
-async function routeMapImage(stops, polyline) {
+// line plus labeled stop markers (A, B, C…). If the URL budget runs out, retry
+// with fewer layers (path only → markers only) instead of failing.
+async function routeMapImage(stops, coords) {
   const safeStops = (Array.isArray(stops) ? stops : []).slice(0, MAX_STOPS);
-  const pathParam = polyline
-    ? "path=" + encodeURIComponent(`weight:5|color:0x2563eb|enc:${polyline}`)
+  const encoded = encodePolyline(coords);
+  const pathParam = encoded
+    ? "path=" + encodeURIComponent(`weight:5|color:0x2563eb|enc:${encoded}`)
     : "";
   const markerParams = safeStops.map((s, i) => {
     const label = MARKER_LABELS[i] || "";
@@ -173,5 +212,6 @@ module.exports = {
   autocomplete,
   routeDistance,
   routeMapImage,
+  encodePolyline,
   MAX_STOPS,
 };
