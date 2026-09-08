@@ -144,6 +144,13 @@ project.
 > certainly have the legacy one ticked instead of **Places API (New)** —
 > tick both, or only (New).
 
+> **Gotcha:** the Routes API field mask `routes.polyline.geoJsonLinestring`
+> looks like the convenient shape to request, but Google answers it with a 200
+> and an **empty polyline** — distance still works, yet the map never renders
+> (the shape is silently empty). Request `routes.polyline.encodedPolyline`
+> instead and decode it (`src/lib/maps.js`); it uses the classic Encoded
+> Polyline format, the same family Static Maps' `enc:` reads.
+
 ### User accounts & password resets
 
 Admins create users with a first/last name, email, username, and password

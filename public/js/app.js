@@ -520,7 +520,7 @@ if ("serviceWorker" in navigator) {
         // (never a receipt the user attached themselves).
         if (data.map && data.map.path) {
           const currentPath = receiptPathInput ? receiptPathInput.value : "";
-          if (!currentPath || /route_map/.test(currentPath)) {
+          if (!currentPath || /route[-_]?map/.test(currentPath)) {
             document.dispatchEvent(new CustomEvent("expense:receipt-show", { detail: data.map }));
           }
         } else if (data.map && data.map.error) {

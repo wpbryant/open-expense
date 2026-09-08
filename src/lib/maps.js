@@ -98,15 +98,15 @@ async function routeDistance(stops) {
 
   // Waypoints sit directly on origin/destination/intermediates — Routes v2 has
   // no nested "waypoint" key. TRAFFIC_UNAWARE keeps distances deterministic.
-  // We ask for the shape as GeoJSON (plain coordinates) rather than Routes'
-  // encodedPolyline: Routes v2 uses its own polyline encoding variant, which
-  // Static Maps' "enc:" parameter can't read (the map zooms out to the globe
-  // because the decoded bounds are nonsense). Classic-encoding it ourselves
-  // (see encodePolyline) keeps the two APIs' formats separate.
+  // We ask for the shape as encodedPolyline and decode it ourselves: Routes'
+  // encodedPolyline IS the classic Encoded Polyline format (the same one
+  // Static Maps' "enc:" reads), and the friendlier-looking
+  // routes.polyline.geoJsonLinestring mask returns 200 with an *empty*
+  // polyline object — shape gone, map silently skipped.
   const waypoint = (s) => (s.placeId ? { placeId: s.placeId } : { address: s.name });
   const data = await googlePost(
     ROUTES_URL,
-    "routes.distanceMeters,routes.polyline.geoJsonLinestring",
+    "routes.distanceMeters,routes.polyline.encodedPolyline",
     {
       origin: waypoint(list[0]),
       destination: waypoint(list[list.length - 1]),
@@ -120,8 +120,35 @@ async function routeDistance(stops) {
   if (!route || typeof route.distanceMeters !== "number") {
     throw new Error("No driving route found between those stops.");
   }
-  const coords = (route.polyline && route.polyline.geoJsonLinestring && route.polyline.geoJsonLinestring.coordinates) || [];
+  const coords = decodePolyline(route.polyline && route.polyline.encodedPolyline);
   return { meters: route.distanceMeters, coords };
+}
+
+// Inverse of encodePolyline: classic Encoded Polyline string → GeoJSON
+// [lng, lat] pairs. Empty/garbage input degrades to [] (no shape, no map).
+function decodePolyline(str) {
+  const s = String(str || "");
+  const out = [];
+  let i = 0;
+  let lat = 0;
+  let lng = 0;
+  const readValue = () => {
+    let result = 1;
+    let shift = 0;
+    let b;
+    do {
+      b = s.charCodeAt(i++) - 63 - 1;
+      result += b << shift;
+      shift += 5;
+    } while (b >= 0x1f);
+    return result & 1 ? ~(result >> 1) : result >> 1;
+  };
+  while (i < s.length) {
+    lat += readValue();
+    lng += readValue();
+    out.push([lng / 1e5, lat / 1e5]);
+  }
+  return out;
 }
 
 // Classic Encoded Polyline Algorithm Format — the variant Static Maps' "enc:"
@@ -188,17 +215,18 @@ function viewForCoords(coords, width, height) {
   };
 }
 
-// Render the route as a portrait PNG for use as the mileage receipt: the route
-// line plus labeled start/end markers. Every element uses documented formats
-// only (classic-encoded path, lat/lng markers, explicit center/zoom) —
-// Static Maps silently drops undocumented ones, which used to leave the
-// default world view.
+// Render the route as a PNG for use as the mileage receipt: the route line
+// plus labeled start/end markers. Static Maps caps any image at 640x640
+// (scale=2 doubles pixels, not the cap), so the receipt map is square.
+// Every element uses documented formats only (classic-encoded path, lat/lng
+// markers, explicit center/zoom) — Static Maps silently drops undocumented
+// ones, which used to leave the default world view.
 async function routeMapImage(stops, coords) {
   const pts = (coords || [])
     .map(([lng, lat]) => [Number(lng), Number(lat)])
     .filter(([lng, lat]) => Number.isFinite(lng) && Number.isFinite(lat));
 
-  const view = viewForCoords(pts, 640, 800);
+  const view = viewForCoords(pts, 640, 640);
   if (!view) return null; // no usable shape — caller keeps the distance, skips the map
 
   // Start/end pins from the shape itself (documented lat/lng marker format).
@@ -215,7 +243,7 @@ async function routeMapImage(stops, coords) {
     const pathParam =
       "path=" + encodeURIComponent(`weight:5|color:0x2563eb|enc:${encodePolyline(work)}`);
     url =
-      `${STATIC_MAP_URL}?size=640x800&scale=2&maptype=roadmap` +
+      `${STATIC_MAP_URL}?size=640x640&scale=2&maptype=roadmap` +
       `&center=${view.center}&zoom=${view.zoom}&${[pathParam, ...markerParams].join("&")}` +
       `&key=${encodeURIComponent(config.googleMapsApiKey)}`;
     if (url.length <= STATIC_MAP_MAX_URL || work.length <= 2) break;
