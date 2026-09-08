@@ -244,6 +244,7 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .btn-danger { background: #fef2f2; color: var(--red); border-color: #fecaca; }
 .btn-danger:hover { background: #fee2e2; border-color: #fca5a5; }
 .btn-sm { padding: 5px 10px; font-size: 13px; }
+.btn-remove:hover { background: var(--red); border-color: var(--red); color: #fff; }
 
 /* Forms */
 form.inline { display: inline; }

@@ -31,7 +31,7 @@
         <div class="table-wrap">
         <table>
           <thead>
-            <tr><th></th><th>Date</th><th>Merchant</th><th>Category</th><th>Chargeable to</th><th class="num">Amount</th><th></th></tr>
+            <tr><th></th><th>Date</th><th>Merchant</th><th>Category</th><th class="num">Amount</th><th></th></tr>
           </thead>
           <tbody>
           <% expenses.forEach(e => { %>
@@ -48,19 +48,23 @@
                 <% } %>
               </td>
               <td class="muted"><%= e.category || '—' %></td>
-              <td class="muted"><%= e.chargeable_to || '—' %></td>
               <td class="num"><%= money(e.amount, e.currency) %></td>
               <td class="num">
                 <form method="post" action="/reports/<%= report.id %>/detach" class="inline">
                   <input type="hidden" name="expense_id" value="<%= e.id %>" />
-                  <button class="btn btn-ghost btn-sm" type="submit" title="Remove from report">✕</button>
+                  <button class="btn btn-ghost btn-sm btn-remove" type="submit" title="Remove from report" aria-label="Remove from report">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <polyline points="3 6 5 6 21 6"></polyline>
+                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    </svg>
+                  </button>
                 </form>
               </td>
             </tr>
           <% }); %>
           </tbody>
           <tfoot>
-            <tr><td colspan="5" style="text-align:right;font-weight:600;">Total</td>
+            <tr><td colspan="4" style="text-align:right;font-weight:600;">Total</td>
             <td class="num" style="font-weight:700;"><%= money(report.total) %></td><td></td></tr>
           </tfoot>
         </table>
