@@ -21,7 +21,7 @@ group expenses into reports, and **export to PDF** (with the receipts embedded).
 
 ## Prerequisites
 
-- **Node.js 20+**
+- **Node.js 22+** (24 LTS recommended — Node 20 reached end-of-life April 2026)
 - **A C/C++ toolchain** (or matching prebuilt binaries) so `npm install` can build
   the native modules `better-sqlite3`, `bcrypt`, and `sharp`. On Debian/Ubuntu:
   `sudo apt-get install build-essential python3`.
