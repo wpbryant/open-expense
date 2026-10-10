@@ -32,20 +32,20 @@
   "license": "MIT",
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
-    "bcrypt": "^5.1.1",
+    "bcrypt": "^6.0.0",
     "better-sqlite3": "^11.8.1",
     "dotenv": "^16.4.7",
     "ejs": "^3.1.10",
     "express": "^4.21.2",
     "express-session": "^1.18.1",
     "multer": "^2.2.0",
-    "nodemailer": "^6.10.1",
+    "nodemailer": "^10.1.0",
     "pdfkit": "^0.15.0",
-    "sharp": "^0.33.5"
+    "sharp": "^0.35.5"
   },
   "allowScripts": {
-    "bcrypt@5.1.1": true,
+    "bcrypt@6.0.0": true,
     "better-sqlite3@11.10.0": true,
-    "sharp@0.33.5": true
+    "sharp@0.35.5": true
   }
 }
